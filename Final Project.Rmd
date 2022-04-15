@@ -103,9 +103,29 @@ These plots are interesting and give some insight as to how the sample is distri
 
 //Observations here
 
-To do this we must transform the data a bit:
+To do this we must transform the data a bit
+Levels: always -> 3
+        sporadic -> 2
+        never -> 1
+        
+// Note: still in the very basic stages, these levels will likely change to establish the y-variable as a percentage/likelihood to vote (between 0 and 1 or 0 and 100)
+// Problems: Our y variable (voter_category) is discrete.
+//    1. Should the predicted values be a percentage? Interpretation?
+//        -If if never is set to 0, how does that effect the model? Bias?
+//        -Issues with testing? Large residuals likely present
+//    2. Should the predictor be re-transformed to a discrete variable?
+//        -Probably introduces large amounts of error, but could make comparing predicted values to observed    slightly better?
+// Just going to have to try, and see what happens 
 ```{r}
-# Transform basic data to plot voter categories as 
+# Transform basic data to plot voter categories as numeric
+
+# Problem: sporadic is set to 3, and rarely/never is set to 2. Not helpful for creating model. 
+
+voteChance <- as.factor(voteBasic$voter_category)
+head(voteChance)
+levels(voteChance)
+voteChance <- as.numeric(voteChance)
+head(voteChance)
 ```
 
 
