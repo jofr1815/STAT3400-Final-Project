@@ -1,0 +1,171 @@
+---
+title: "Final Project"
+author: "John Frederickson"
+date: "4/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Analysis of Non-Voter Data
+
+## Introduction
+
+For my final project, I will be doing an analysis of Non-Voter data, from fivethirtyeight's non-voter data set. I will first perform an analysis of the basic variables in order to draw preliminary insight as which influence someones likelihood to vote. I will then split the model into two sets, a training set (80%) and a testing set (20%), and create a preliminary prediction model. I will then perform a more in depth analysis with more than the basic variables. This will also include creating artificial scores from the questions with multiple parts, such as trust in different parts of the government being added together for a generic "trust in government" score. A larger prediction model will be fitted, and tested similar to the first model. Time permitting, and depending on what ends up being significant in the larger model, these artificial scores may be split up to determine which factors exactly are influential on voter category. 
+
+### About the Data Set
+
+Data Set Link: https://github.com/fivethirtyeight/data/tree/master/non-voters
+
+This data set includes survey results from 5,239 participants, who were surveyed between September 15 2020 and September 25 2020. Initially 8,327 participants were surveyed, though only 64% (5,239) of the results were included based on those who were eligible to vote for at three or more elections, matching the U.S. Census Bureau's population benchmarks (to avoid over or under representing certain demographics), and eliminating most respondents whose information given did not match the voter file. Some of those not found in the voter file were left in the results, to avoid under representing non-voters who are eligible and just not registered.
+
+Basic information was collected such as income, gender, education, weight, race, and age as well as how often they vote. Each participants were put into one of three categories, never or rarely vote (voted in 0 or 1 elections), sometimes vote (more than 1, less than all but 1), and nearly always vote (voted in all or all but one election), based on how often they have voted in elections they are eligible for. Each respondent was also asked a variety of other questions, such as their political affiliation, their preferred method of voting, their plans for the 2020 election, whether their vote matters, their trust in government, barriers to voting, and whether or not the government needs change. Many of these questions were split up into sub questions, such as trust in specific parts of the government, and have multiple levels for each (A lot, some, not much, not at all, etc). 
+
+```{r}
+# Load data set
+vote <- read.csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/non-voters/nonvoters_data.csv")
+```
+
+## Part 1: Basic Variables
+
+For now, lets just explore the basic variables, such as income, education, age, gender, and voter category . This will build a foundation for the techniques to be used in the full scale analysis. 
+
+### 1a: Basic Analysis
+
+#### Visualizations of Voter Category Distributions
+//Maybe just have the population distribution plots here, and move voter category to the percentage based plots?
+```{r fig1, fig.height=10, fig.width=12}
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+
+# Remove just the basic variables
+voteBasic <- vote %>% select(educ, race, gender, income_cat, ppage, voter_category, weight)
+
+head(voteBasic)
+
+#ToDo: 1. Plots currently show count in each bin, but need to show percentage
+#         -Maybe a different cluster of plots, so that we can visualize the distribution of the population     across each bin?
+#      2. Transform weight and age to discrete variables?
+#      3. Remove all legends except one
+#bP1 -> basic plot 1
+#Education
+bP1 <- ggplot(voteBasic, aes(x = educ, fill = voter_category)) + # Create basic Plot
+  geom_bar() + 
+  xlab("Education") + ylab("# of Respondents") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category"))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+#Income
+bP2 <- ggplot(voteBasic, aes(x = income_cat, fill = voter_category)) + # Create basic Plot
+  geom_bar() + 
+  xlab("Income") + ylab("# of Respondents") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+#Age
+#Note: Age is continuous, use histogram rather than bar plot
+bP3 <- ggplot(voteBasic, aes(x = ppage, fill = voter_category)) + # Create basic Plot
+  geom_histogram(breaks = c(20, 30, 40, 50, 60, 70, 80, 90)) + 
+  xlab("Age") + ylab("# of Respondents") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+#Gender
+bP4 <- ggplot(voteBasic, aes(x = gender, fill = voter_category)) + # Create basic Plot
+  geom_bar() + 
+  xlab("Gender") + ylab("# of Respondents") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+#Race
+bP5 <- ggplot(voteBasic, aes(x = race, fill = voter_category)) + # Create basic Plot
+  geom_bar() + 
+  xlab("Race") + ylab("# of Respondents") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+#Weight
+#Note: Continuous variable, use histogram rather than bar plot
+bP6 <- ggplot(voteBasic, aes(x = weight, fill = voter_category)) + # Create basic Plot
+  geom_histogram() + 
+  xlab("Weight") + ylab("# of Respondents") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+plot_grid(bP1, bP2, bP3, bP4, bP5, bP6)
+
+```
+
+These plots are interesting and give some insight as to how the sample is distributed among the basic variables. The varying heights (coming from a count function, rather than a percentage) make it difficult to discern which levels have differing distributions of voter category.
+
+//Observations here
+
+To do this we must transform the data a bit:
+```{r}
+# Transform basic data to plot voter categories as 
+```
+
+
+These initial plots demonstrate the distribution of voter categories among each level of our basic variables. 
+// Observations here
+
+
+// Next steps for basic analysis:
+  1. Box Plots?
+  2. Anova to determine which levels are significant (use TukeyHSD to simplify?)
+  3. Bartlett test to determine if variances are the same among the different levels
+  
+### 1b: Basic Prediction Model
+
+First and foremost, we need to perform a transformation to the data. Namely we need to transform the voter_category variable to numeric, so that a linear model can be fitted. 
+
+```{r}
+# Transform voter_category to numeric
+
+```
+
+Next, we will split the data into training and testing sets. These sets will also be used for the larger model
+
+```{r}
+# Split data here
+```
+
+#### The Full Model
+
+Now we can create the initial (full) model.
+
+```{r}
+#lmodb1 -> basic linear model #1
+```
+
+
+#### Diagnostics
+//Diagnostics here
+
+// Model selection here
+1. Backwards Elimination
+2. Adjusted R-Squared
+3. AIC/BIC?
+
+
+Since we are attempting to build a prediction model, we will try to find the model with the smallest mean squared error (MSE)
+
+//Compare reduced model to full model here
+
+#### Testing the Basic Model
+
+### 1c: Initial Conclusions
+
+// Initial conclusions here:
+//    1. Initial visualizations
+//    2. Anova
+//    3. Model
+//    4. Next steps for full dataset
+
+## Part 2: The Full Dataset
+
+
+
