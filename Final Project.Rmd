@@ -156,7 +156,7 @@ These transformed plots show the distribution of voter category as a percentage,
   2. Anova to determine which levels are significant (use TukeyHSD to simplify?)
   3. Bartlett test to determine if variances are the same among the different levels
   
-Next, lets create a set of box plots to visualize the means and variance of each level. 
+Next, lets create a set of box plots to visualize the means and variance of each level. In addition it will also help identify any outliers
 
 ```{r}
 # Box plots here
@@ -165,11 +165,20 @@ Next, lets create a set of box plots to visualize the means and variance of each
 //Observations
 
 Now, lets use anova to determine which of these levels is significant. 
-//anova explanation, explain use of tukeyHSD to simplify
+//anova explanation, explain use of tukeyHSD to simplify finding which specific levels
 
+```{r}
+educResult <- aov(voteChance ~ educ, data = voteBasic)
+summary(educResult)
+```
+With a P-value less than 0.05, we can conclude that there is some meaningful difference in mean of voter category by different levels of education. Now lets use TukeyHSD to find which specific levels are significant:
 
+```{r}
+TukeyHSD(educResult)
+```
 
-  
+//More or less do this for all of the basic prediction variables, not results, and compare to box plots
+
 ### 1b: Basic Prediction Model
 
 First and foremost, we need to use the split vector generated in the initial setup to assign rows to either the training or testing set. 
