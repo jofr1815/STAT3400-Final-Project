@@ -34,8 +34,30 @@ vote <- read.csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/
 
 ```{r}
 # Generate a random vector to label which rows will be split
-
+library(caTools)
+split <- sample.split(vote$RespId, SplitRatio = 0.8)
+summary(split)
 ```
+
+#### Recoding variables
+
+First, we transform the voter categories to a numeric variable and assign it to a new column
+Levels: always -> 3
+        sporadic -> 2
+        never -> 1
+This will be useful later to examine and compare means of levels of different variables
+
+```{r}
+# Transform voter categories from character levels to a numerica variable
+# -Useful for calculating means (anova/bartlett, building mlr model
+
+voteBasic$voteChance <- as.numeric(recode_factor(voteBasic$voter_category, "rarely/never" = 1, "sporadic" = 2, "always" = 3))
+
+head(voteBasic$voteChance)
+summary(voteBasic$voteChance)
+head(voteBasic)
+```
+
 
 
 ## Part 1: Basic Variables
@@ -58,18 +80,21 @@ head(voteBasic)
 
 #ToDo: 1. Plots currently show count in each bin, but need to show percentage
 #         -Maybe a different cluster of plots, so that we can visualize the distribution of the population     across each bin?
-#      2. Transform weight and age to discrete variables?
+#      2. Transform weight and age to discrete (leveled) variables?
+#         -Useful for visualization, but introduces additional error in analysis
 #      3. Remove all legends except one
-#bP1 -> basic plot 1
+#
+#format: basicBar1 -> basic bar plot #11
+
 #Education
-bP1 <- ggplot(voteBasic, aes(x = educ, fill = voter_category)) + # Create basic Plot
+basicBar1 <- ggplot(voteBasic, aes(x = educ, fill = voter_category)) + # Create basic Plot
   geom_bar() + 
   xlab("Education") + ylab("# of Respondents") + # Add axis labels
-  guides(fill = guide_legend(title = "Voter Category"))
+  guides(fill = guide_legend(title = "Voter Category")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
 
 #Income
-bP2 <- ggplot(voteBasic, aes(x = income_cat, fill = voter_category)) + # Create basic Plot
+basicBar2 <- ggplot(voteBasic, aes(x = income_cat, fill = voter_category)) + # Create basic Plot
   geom_bar() + 
   xlab("Income") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) + 
@@ -77,21 +102,21 @@ bP2 <- ggplot(voteBasic, aes(x = income_cat, fill = voter_category)) + # Create 
 
 #Age
 #Note: Age is continuous, use histogram rather than bar plot
-bP3 <- ggplot(voteBasic, aes(x = ppage, fill = voter_category)) + # Create basic Plot
+basicBar3 <- ggplot(voteBasic, aes(x = ppage, fill = voter_category)) + # Create basic Plot
   geom_histogram(breaks = c(20, 30, 40, 50, 60, 70, 80, 90)) + 
   xlab("Age") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
 
 #Gender
-bP4 <- ggplot(voteBasic, aes(x = gender, fill = voter_category)) + # Create basic Plot
+basicBar4 <- ggplot(voteBasic, aes(x = gender, fill = voter_category)) + # Create basic Plot
   geom_bar() + 
   xlab("Gender") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
 
 #Race
-bP5 <- ggplot(voteBasic, aes(x = race, fill = voter_category)) + # Create basic Plot
+basicBar5 <- ggplot(voteBasic, aes(x = race, fill = voter_category)) + # Create basic Plot
   geom_bar() + 
   xlab("Race") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) + 
@@ -99,36 +124,25 @@ bP5 <- ggplot(voteBasic, aes(x = race, fill = voter_category)) + # Create basic 
 
 #Weight
 #Note: Continuous variable, use histogram rather than bar plot
-bP6 <- ggplot(voteBasic, aes(x = weight, fill = voter_category)) + # Create basic Plot
+basicBar6 <- ggplot(voteBasic, aes(x = weight, fill = voter_category)) + # Create basic Plot
   geom_histogram() + 
   xlab("Weight") + ylab("# of Respondents") + # Add axis labels
-  guides(fill = guide_legend(title = "Voter Category")) + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+  guides(fill = guide_legend(title = "Voter Category"))
 
-plot_grid(bP1, bP2, bP3, bP4, bP5, bP6)
+plot_grid(basicBar1, basicBar2, basicBar3, basicBar4, basicBar5, basicBar6)
 
 ```
 
 These plots are interesting and give some insight as to how the sample is distributed among the basic variables. The varying heights (coming from a count function, rather than a percentage) make it difficult to discern which levels have differing distributions of voter category.
 
 //Observations here
-
-To do this we must transform the data a bit
-Levels: always -> 3
-        sporadic -> 2
-        never -> 1
         
-// Note: still in the very basic stages, these levels will likely change to establish the y-variable as a percentage/likelihood to vote (between 0 and 1 or 0 and 100)
-// Problems: Our y variable (voter_category) is discrete.
-//    1. Should the predicted values be a percentage? Interpretation?
-//        -If if never is set to 0, how does that effect the model? Bias?
-//        -Issues with testing? Large residuals likely present
-//    2. Should the predictor be re-transformed to a discrete variable?
-//        -Probably introduces large amounts of error, but could make comparing predicted values to observed    slightly better?
-// Just going to have to try, and see what happens 
+```{r}
+#Percentage based plots here
+```
 
-These initial plots demonstrate the distribution of voter categories among each level of our basic variables. 
 // Observations here
+These transformed plots show the distribution of voter category as a percentage, rather than as a count of the participants in each category. This allows us to better compare the different distributions of voter category across different levels of a variable. 
 
 
 // Next steps for basic analysis:
@@ -136,30 +150,14 @@ These initial plots demonstrate the distribution of voter categories among each 
   2. Anova to determine which levels are significant (use TukeyHSD to simplify?)
   3. Bartlett test to determine if variances are the same among the different levels
   
+Next, we can create a set of box plots to visualize the means and variance of each level. 
+  
 ### 1b: Basic Prediction Model
 
-First and foremost, we need to perform a transformation to the data. Namely we need to transform the voter_category variable to numeric, so that a linear model can be fitted. 
-
+First and foremost, we need to use the split vector generated in the initial setup to assign rows to either the training or testing set. 
 ```{r}
-# Transform basic data to plot voter categories as numeric
-# This will eventually be moved to the top into a new column to simplify later steps
 
-# Problem: sporadic is set to 3, and rarely/never is set to 2. Not helpful for creating model. 
-
-voteChance <- as.factor(voteBasic$voter_category)
-head(voteChance)
-levels(voteChance)
-voteChance <- as.numeric(voteChance)
-head(voteChance)
-summary(voteChance)
 ```
-
-Now we can split the basic data into the training and testing sets
-
-```{r}
-# Use the generated vector to split the data 
-```
-
 
 #### The Full Model
 
@@ -189,11 +187,17 @@ Since we are attempting to build a prediction model, we will try to find the mod
 
 // Initial conclusions here:
 //    1. Initial visualizations
-//    2. Anova
+//    2. Anova (which variables and levels have a significant effect on voter category)
 //    3. Model
 //    4. Next steps for full dataset
 
 ## Part 2: The Full Dataset
 
+Part 2 of this analysis will use the methods of part 1, but applied to a larger set of variables. Hopefully this will lead to insight as to a voter's attitude towards the election and/or government, experiencing barriers to voting, party affiliation, and how this influences their likelyhood to vote. Part of this will also include the creation of composite scores (based on questions will multiple answers), as there are many questions with 5+ sub questions. 
 
+### 2a: Analysis
+### 2b: Prediction Model
+### 2c: Conclusions
+
+## Final conclusion
 
