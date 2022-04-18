@@ -28,6 +28,11 @@ Basic information was collected such as income, gender, education, weight, race,
 ```{r}
 # Load data set
 vote <- read.csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/non-voters/nonvoters_data.csv")
+
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(cowplot)
 ```
 
 #### Training and testing set
@@ -51,11 +56,11 @@ This will be useful later to examine and compare means of levels of different va
 # Transform voter categories from character levels to a numerica variable
 # -Useful for calculating means (anova/bartlett, building mlr model
 
-voteBasic$voteChance <- as.numeric(recode_factor(voteBasic$voter_category, "rarely/never" = 1, "sporadic" = 2, "always" = 3))
+vote$voteChance <- as.numeric(recode_factor(vote$voter_category, "rarely/never" = 1, "sporadic" = 2, "always" = 3))
 
-head(voteBasic$voteChance)
-summary(voteBasic$voteChance)
-head(voteBasic)
+head(vote$voteChance)
+summary(vote$voteChance)
+head(vote)
 ```
 
 
@@ -74,7 +79,7 @@ library(cowplot)
 library(dplyr)
 
 # Remove just the basic variables
-voteBasic <- vote %>% select(educ, race, gender, income_cat, ppage, voter_category, weight)
+voteBasic <- vote %>% select(educ, race, gender, income_cat, ppage, voter_category, weight, voteChance)
 
 head(voteBasic)
 
@@ -136,27 +141,41 @@ plot_grid(basicBar1, basicBar2, basicBar3, basicBar4, basicBar5, basicBar6)
 These plots are interesting and give some insight as to how the sample is distributed among the basic variables. The varying heights (coming from a count function, rather than a percentage) make it difficult to discern which levels have differing distributions of voter category.
 
 //Observations here
-        
+
+Lets transform those to be percentage based: 
+
 ```{r}
 #Percentage based plots here
 ```
 
 // Observations here
-These transformed plots show the distribution of voter category as a percentage, rather than as a count of the participants in each category. This allows us to better compare the different distributions of voter category across different levels of a variable. 
-
+These transformed plots show the distribution of voter category as a percentage, rather than as a count of the participants in each category. This allows us to better compare the different distributions of voter category across different levels of a variable.
 
 // Next steps for basic analysis:
   1. Box Plots?
   2. Anova to determine which levels are significant (use TukeyHSD to simplify?)
   3. Bartlett test to determine if variances are the same among the different levels
   
-Next, we can create a set of box plots to visualize the means and variance of each level. 
+Next, lets create a set of box plots to visualize the means and variance of each level. 
+
+```{r}
+# Box plots here
+```
+
+//Observations
+
+Now, lets use anova to determine which of these levels is significant. 
+//anova explanation, explain use of tukeyHSD to simplify
+
+
+
   
 ### 1b: Basic Prediction Model
 
 First and foremost, we need to use the split vector generated in the initial setup to assign rows to either the training or testing set. 
 ```{r}
-
+basicTraining <- subset(voteBasic, split == TRUE)
+basicTesting  <- subset(voteBasic, split == FALSE)
 ```
 
 #### The Full Model
@@ -165,10 +184,26 @@ Now we can create the initial (full) model from the training set.
 
 ```{r}
 #lmodb1 -> basic linear model #1
+
+lmodb1 <- lm(voteChance ~ income_cat + ppage + weight + educ + gender + race, data = basicTraining)
+summary(lmodb1)
 ```
+//Problems: 1. Due to the nature of voter category being a factor variable, the residuals of this model are likely to be extremely large, and it may not be very accurate.
 
+// Solutions:
+            1. Refactor predicted values to the initial three categories, and analyze how often the model places a voter into the correct category?
+              - ex: 
+                  $\hat y < 1.5$ -> 1
+                  $\hat y >= 1.5 & \hat y < 2.5 $ -> 2
+                  $\hat y >=2.5$ -> 3
+              -Metrics for accuracy?
+              -Implications for error?
+              -Different penalties for being one group off vs two groups off?
+            2. Some other sort of regression technique/function?
+            
+//In short, this model is going to be quite a mess. Hopefully it can lead to some insight, but most likely isn't going to be super useful. Initially I had it in my head that this model would predict someones likelyhood to vote, but in fact the model can really only predict which group a participant belongs in, as this is the only data we have about a participants voting frequency. 
 
-#### Diagnostics
+#### Diagnostics and Model Selection
 //Diagnostics here
 
 // Model selection here
@@ -183,12 +218,16 @@ Since we are attempting to build a prediction model, we will try to find the mod
 
 #### Testing the Basic Model
 
+
+
+
 ### 1c: Initial Conclusions
 
 // Initial conclusions here:
 //    1. Initial visualizations
 //    2. Anova (which variables and levels have a significant effect on voter category)
 //    3. Model
+//    4. Implications for the real world (how to increase voter turnout by identifying barriers of entry?)
 //    4. Next steps for full dataset
 
 ## Part 2: The Full Dataset
@@ -196,8 +235,12 @@ Since we are attempting to build a prediction model, we will try to find the mod
 Part 2 of this analysis will use the methods of part 1, but applied to a larger set of variables. Hopefully this will lead to insight as to a voter's attitude towards the election and/or government, experiencing barriers to voting, party affiliation, and how this influences their likelyhood to vote. Part of this will also include the creation of composite scores (based on questions will multiple answers), as there are many questions with 5+ sub questions. 
 
 ### 2a: Analysis
+
+
 ### 2b: Prediction Model
+
 ### 2c: Conclusions
+
 
 ## Final conclusion
 
