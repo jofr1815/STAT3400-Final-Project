@@ -171,6 +171,9 @@ Next, lets create a set of box plots to visualize the means and variance of each
 
 ```{r}
 # Box plots here
+boxplot(voteChance ~ educ, data = voteBasic)
+ggplot(data = voteBasic, aes(y = voteChance, x=educ)) + geom_boxplot()
+ggplot(data = voteBasic, aes(y = voteChance, x=income_cat)) + geom_boxplot()
 ```
 
 //Observations
