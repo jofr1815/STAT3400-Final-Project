@@ -15,6 +15,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 For my final project, I will be doing an analysis of Non-Voter data, from fivethirtyeight's non-voter data set. I will first perform an analysis of the basic variables in order to draw preliminary insight as which influence someones likelihood to vote. I will then split the model into two sets, a training set (80%) and a testing set (20%), and create a preliminary prediction model. I will then perform a more in depth analysis with more than the basic variables. This will also include creating artificial scores from the questions with multiple parts, such as trust in different parts of the government being added together for a generic "trust in government" score. A larger prediction model will be fitted, and tested similar to the first model. Time permitting, and depending on what ends up being significant in the larger model, these artificial scores may be split up to determine which factors exactly are influential on voter category. 
 
+### Background Information
+//backround info from proposal
+
 ### About the Data Set
 
 Data Set Link: https://github.com/fivethirtyeight/data/tree/master/non-voters
@@ -73,6 +76,14 @@ For now, lets just explore the basic variables, such as income, education, age, 
 
 #### Visualizations of Voter Category Distributions
 //Maybe just have the population distribution plots here, and move voter category to the percentage based plots?
+
+//Change to percentage plot rather than count?
+
+```{r}
+ggplot(vote, aes(x = voter_category, fill = voter_category)) + geom_bar()
+```
+
+
 ```{r fig1, fig.height=10, fig.width=12}
 library(ggplot2)
 library(cowplot)
@@ -177,7 +188,27 @@ With a P-value less than 0.05, we can conclude that there is some meaningful dif
 TukeyHSD(educResult)
 ```
 
-//More or less do this for all of the basic prediction variables, not results, and compare to box plots
+//More or less do this for all of the basic prediction variables, note results, and compare to box plots
+
+```{r}
+incomeResult <- aov(voteChance ~ income_cat, data = voteBasic)
+summary(incomeResult)
+TukeyHSD(incomeResult)
+```
+
+```{r}
+genderResult <- aov(voteChance ~ gender, data = voteBasic)
+summary(genderResult)
+TukeyHSD(genderResult)
+```
+
+```{r}
+raceResult <- aov(voteChance ~ race, data = voteBasic)
+summary(raceResult)
+TukeyHSD(raceResult)
+```
+
+
 
 ### 1b: Basic Prediction Model
 
@@ -202,9 +233,13 @@ summary(lmodb1)
 // Solutions:
             1. Refactor predicted values to the initial three categories, and analyze how often the model places a voter into the correct category?
               - ex: 
-                  $\hat y < 1.5$ -> 1
+              
+                  $\hat y < 1.5$ -> 1 
+                  
                   $\hat y >= 1.5 & \hat y < 2.5 $ -> 2
+                  
                   $\hat y >=2.5$ -> 3
+                  
               -Metrics for accuracy?
               -Implications for error?
               -Different penalties for being one group off vs two groups off?
