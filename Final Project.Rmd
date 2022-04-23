@@ -94,24 +94,21 @@ voteBasic <- vote %>% select(educ, race, gender, income_cat, ppage, voter_catego
 
 head(voteBasic)
 
-#ToDo: 1. Plots currently show count in each bin, but need to show percentage
-#         -Maybe a different cluster of plots, so that we can visualize the distribution of the population     across each bin?
-#      2. Transform weight and age to discrete (leveled) variables?
-#         -Useful for visualization, but introduces additional error in analysis
-#      3. Remove all legends except one
+#ToDo: 1. Deside between percentage and dodge
+#      2. Remove all legends except one
 #
 #format: basicBar1 -> basic bar plot #11
 
 #Education
 basicBar1 <- ggplot(voteBasic, aes(x = educ, fill = voter_category)) + # Create basic Plot
-  geom_bar() + 
+  geom_bar(position = "dodge") + 
   xlab("Education") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
 
 #Income
 basicBar2 <- ggplot(voteBasic, aes(x = income_cat, fill = voter_category)) + # Create basic Plot
-  geom_bar() + 
+  geom_bar(position = "fill") + 
   xlab("Income") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
@@ -119,21 +116,21 @@ basicBar2 <- ggplot(voteBasic, aes(x = income_cat, fill = voter_category)) + # C
 #Age
 #Note: Age is continuous, use histogram rather than bar plot
 basicBar3 <- ggplot(voteBasic, aes(x = ppage, fill = voter_category)) + # Create basic Plot
-  geom_histogram(breaks = c(20, 30, 40, 50, 60, 70, 80, 90)) + 
+  geom_histogram(breaks = c(20, 30, 40, 50, 60, 70, 80, 90), position = "fill") + 
   xlab("Age") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
 
 #Gender
 basicBar4 <- ggplot(voteBasic, aes(x = gender, fill = voter_category)) + # Create basic Plot
-  geom_bar() + 
+  geom_bar(position = "fill") + 
   xlab("Gender") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
 
 #Race
 basicBar5 <- ggplot(voteBasic, aes(x = race, fill = voter_category)) + # Create basic Plot
-  geom_bar() + 
+  geom_bar(position = "fill") + 
   xlab("Race") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
@@ -141,7 +138,7 @@ basicBar5 <- ggplot(voteBasic, aes(x = race, fill = voter_category)) + # Create 
 #Weight
 #Note: Continuous variable, use histogram rather than bar plot
 basicBar6 <- ggplot(voteBasic, aes(x = weight, fill = voter_category)) + # Create basic Plot
-  geom_histogram() + 
+  geom_histogram(position = "fill") + 
   xlab("Weight") + ylab("# of Respondents") + # Add axis labels
   guides(fill = guide_legend(title = "Voter Category"))
 
