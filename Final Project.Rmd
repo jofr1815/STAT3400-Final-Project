@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(MASS)
 ```
 
 # Analysis of Non-Voter Data
@@ -281,11 +282,129 @@ Since we are attempting to build a prediction model, we will try to find the mod
 //    4. Implications for the real world (how to increase voter turnout by identifying barriers of entry?)
 //    4. Next steps for full dataset
 
+```{r}
+vote$voter_category = factor(vote$voter_category, levels = c("rarely/never", "sporadic", "always"), ordered = TRUE)
+levels(vote$voter_category)
+head(vote$voter_category)
+
+m <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight, data = vote, Hess = TRUE)
+summary(m)
+
+table(vote$voter_category, vote$educ)
+
+predictvote = predict(m, vote)
+table(vote$voter_category, predictvote)
+```
+
+
+
 ## Part 2: The Full Dataset
 
 Part 2 of this analysis will use the methods of part 1, but applied to a larger set of variables. Hopefully this will lead to insight as to a voter's attitude towards the election and/or government, experiencing barriers to voting, party affiliation, and how this influences their likelyhood to vote. Part of this will also include the creation of composite scores (based on questions will multiple answers), as there are many questions with 5+ sub questions. 
 
 ### 2a: Analysis
+```{r}
+# Data Cleaning
+vote$Q8_1 <- factor(vote$Q8_1)
+vote$Q8_1 <- recode_factor(vote$Q8_1, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_2 <- factor(vote$Q8_2)
+vote$Q8_2 <- recode_factor(vote$Q8_2, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_3 <- factor(vote$Q8_3)
+vote$Q8_3 <- recode_factor(vote$Q8_3, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_4 <- factor(vote$Q8_4)
+vote$Q8_4 <- recode_factor(vote$Q8_4, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_5 <- factor(vote$Q8_5)
+vote$Q8_5 <- recode_factor(vote$Q8_5, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_6 <- factor(vote$Q8_6)
+vote$Q8_6 <- recode_factor(vote$Q8_6, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_7 <- factor(vote$Q8_7)
+vote$Q8_7 <- recode_factor(vote$Q8_7, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_8 <- factor(vote$Q8_8)
+vote$Q8_8 <- recode_factor(vote$Q8_8, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_9 <- factor(vote$Q8_9)
+vote$Q8_9 <- recode_factor(vote$Q8_9, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+
+```
+
+```{r}
+trust1 <- ggplot(vote, aes(x = factor(Q8_1, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Presidency") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust2 <- ggplot(vote, aes(x = factor(Q8_2, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in Congress") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust3 <- ggplot(vote, aes(x = factor(Q8_1, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Supreme Court") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust4 <- ggplot(vote, aes(x = factor(Q8_4, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The CDC") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust5 <- ggplot(vote, aes(x = factor(Q8_5, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in Election Officials") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust6 <- ggplot(vote, aes(x = factor(Q8_6, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Intelligence Community") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust7 <- ggplot(vote, aes(x = factor(Q8_7, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in News Media") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust8 <- ggplot(vote, aes(x = factor(Q8_8, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Police") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust9 <- ggplot(vote, aes(x = factor(Q8_9, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Post Office") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+#plot_grid(trust1, trust2, trust3, trust4, trust5, trust6, trust7, trust8, trust9)
+trust1
+trust2
+trust3
+trust4
+trust5
+trust6
+trust7
+trust8
+trust9
+```
+
+```{r}
+TukeyHSD(aov(vote$voteChance ~ vote$Q8_1))
+```
 
 
 ### 2b: Prediction Model
