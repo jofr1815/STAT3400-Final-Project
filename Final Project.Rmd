@@ -62,6 +62,10 @@ This will be useful later to examine and compare means of levels of different va
 
 vote$voteChance <- as.numeric(recode_factor(vote$voter_category, "rarely/never" = 1, "sporadic" = 2, "always" = 3))
 
+vote$voter_category = factor(vote$voter_category, levels = c("rarely/never", "sporadic", "always"), ordered = TRUE)
+levels(vote$voter_category)
+head(vote$voter_category)
+
 vote$income_cat <- as.factor(vote$income_cat)
 
 head(vote$voteChance)
@@ -93,7 +97,7 @@ library(cowplot)
 library(dplyr)
 
 # Remove just the basic variables
-voteBasic <- vote %>% select(educ, race, gender, income_cat, ppage, voter_category, weight, voteChance)
+voteBasic <- vote %>% dplyr::select(educ, race, gender, income_cat, ppage, voter_category, weight, voteChance)
 
 head(voteBasic)
 
@@ -283,17 +287,15 @@ Since we are attempting to build a prediction model, we will try to find the mod
 //    4. Next steps for full dataset
 
 ```{r}
-vote$voter_category = factor(vote$voter_category, levels = c("rarely/never", "sporadic", "always"), ordered = TRUE)
-levels(vote$voter_category)
-head(vote$voter_category)
 
-m <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight, data = vote, Hess = TRUE)
+
+m <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight, data = basicTraining, Hess = TRUE)
 summary(m)
 
-table(vote$voter_category, vote$educ)
 
-predictvote = predict(m, vote)
-table(vote$voter_category, predictvote)
+predictvote = predict(m, basicTesting)
+table(basicTesting$voter_category, predictvote)
+mean(as.character(basicTesting$voter_category) != as.character(predictvote))
 ```
 
 
@@ -406,6 +408,150 @@ trust9
 TukeyHSD(aov(vote$voteChance ~ vote$Q8_1))
 ```
 
+```{r}
+# Barriers of Entry
+vote$Q18_1 <- factor(vote$Q18_1)
+vote$Q18_1 <- recode_factor(vote$Q18_1, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_2 <- factor(vote$Q18_2)
+vote$Q18_2 <- recode_factor(vote$Q18_2, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_3 <- factor(vote$Q18_3)
+vote$Q18_3 <- recode_factor(vote$Q18_3, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_4 <- factor(vote$Q18_4)
+vote$Q18_4 <- recode_factor(vote$Q18_4, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_5 <- factor(vote$Q18_5)
+vote$Q18_5 <- recode_factor(vote$Q18_5, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_6 <- factor(vote$Q18_6)
+vote$Q18_6 <- recode_factor(vote$Q18_6, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_7 <- factor(vote$Q18_7)
+vote$Q18_7 <- recode_factor(vote$Q18_7, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_8 <- factor(vote$Q18_8)
+vote$Q18_8 <- recode_factor(vote$Q18_8, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_9 <- factor(vote$Q18_9)
+vote$Q18_9 <- recode_factor(vote$Q18_9, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_10 <- factor(vote$Q18_10)
+vote$Q18_10 <- recode_factor(vote$Q18_10, "1" = "Yes", "2" = "No", "-1" = "No Response")
+```
+
+```{r}
+barrier1 <- ggplot(vote, aes(x = factor(Q18_1, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("No Correct Id") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+barrier2 <- ggplot(vote, aes(x = factor(Q18_2, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Couldnt Find Polling Place") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier3 <- ggplot(vote, aes(x = factor(Q18_3, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Missed Registration Deadline") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier4 <- ggplot(vote, aes(x = factor(Q18_4, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Unable to Acess Poling Place") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier5 <- ggplot(vote, aes(x = factor(Q18_5, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Couldn't Get Assistance Filling Out Ballot") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier6 <- ggplot(vote, aes(x = factor(Q18_6, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Had to Cast Provisional Ballot") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier7 <- ggplot(vote, aes(x = factor(Q18_7, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Couldn't Get Off Work to Vote") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier8 <- ggplot(vote, aes(x = factor(Q18_8, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Waited More Than an Hour") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier9 <- ggplot(vote, aes(x = factor(Q18_9, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Told Name Wasn't on List After Registration") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier10 <- ggplot(vote, aes(x = factor(Q18_10, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Didn't get Ballot in Time") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier1
+barrier2
+barrier3
+barrier4
+barrier5
+barrier6
+barrier7
+barrier8
+barrier9
+barrier10
+```
+
+```{r}
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_1))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_2))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_3))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_4))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_5))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_6))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_7))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_8))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_9))
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_10))
+```
+
+```{r}
+summary(vote$Q18_10)
+ncol(vote)
+```
+```{r}
+# Other Recodes
+vote$Q5 <- factor(vote$Q5)
+vote$Q5 <- recode_factor(vote$Q5, "1" = "2020 Matters", "2" = "2020 Doesn't Matter", "-1" = "No Response")
+```
+
+
+```{r}
+voteTraining <- subset(vote, split == TRUE)
+voteTesting  <- subset(vote, split == FALSE)
+
+m <- polr(voter_category ~ educ + income_cat + race + gender + ppage + Q18_1+ Q8_1 + Q5, data = voteTraining, Hess = TRUE)
+summary(m)
+
+# + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_9 + Q18_10 
+#  + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_6 + Q8_7 + Q8_8 + Q8_9
+
+predictvote = predict(m, voteTesting)
+table(basicTesting$voter_category, predictvote)
+mean(as.character(voteTesting$voter_category) != as.character(predictvote))
+```
 
 ### 2b: Prediction Model
 
