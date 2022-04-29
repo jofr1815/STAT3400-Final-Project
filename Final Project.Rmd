@@ -535,6 +535,98 @@ ncol(vote)
 # Other Recodes
 vote$Q5 <- factor(vote$Q5)
 vote$Q5 <- recode_factor(vote$Q5, "1" = "2020 Matters", "2" = "2020 Doesn't Matter", "-1" = "No Response")
+
+vote$Q6 <- factor(vote$Q6)
+vote$Q6 <- recode_factor(vote$Q6, "1" = "A lot", "2" = "Some", "3" = "A few", "4" = "None", "-1" = "No Response")
+
+vote$Q7 <- factor(vote$Q7)
+vote$Q7 <- recode_factor(vote$Q7, "1" = "Changes Needed", "2" = "Changes Not Needed", "-1" = "No Response")
+
+vote$Q9_1 <- factor(vote$Q9_1)
+vote$Q9_1 <- recode_factor(vote$Q9_1, "1" = "Very Good", "2" = "Fairly Good", "3" = "Fairly Bad", "4" = "Very Bad", "-1" = "No Response")
+
+vote$Q9_2 <- factor(vote$Q9_2)
+vote$Q9_2 <- recode_factor(vote$Q9_2, "1" = "Very Good", "2" = "Fairly Good", "3" = "Fairly Bad", "4" = "Very Bad", "-1" = "No Response")
+
+vote$Q9_3 <- factor(vote$Q9_3)
+vote$Q9_3 <- recode_factor(vote$Q9_3, "1" = "Very Good", "2" = "Fairly Good", "3" = "Fairly Bad", "4" = "Very Bad", "-1" = "No Response")
+
+vote$Q9_4 <- factor(vote$Q9_4)
+vote$Q9_4 <- recode_factor(vote$Q9_4, "1" = "Very Good", "2" = "Fairly Good", "3" = "Fairly Bad", "4" = "Very Bad", "-1" = "No Response")
+
+vote$Q10_1 <- factor(vote$Q10_1)
+vote$Q10_1 <- recode_factor(vote$Q10_1, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q10_2 <- factor(vote$Q10_2)
+vote$Q10_2 <- recode_factor(vote$Q10_2, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q10_3 <- factor(vote$Q10_3)
+vote$Q10_3 <- recode_factor(vote$Q10_3, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q10_4 <- factor(vote$Q10_4)
+vote$Q10_4 <- recode_factor(vote$Q10_4, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_1 <- factor(vote$Q11_1)
+vote$Q11_1 <- recode_factor(vote$Q11_1, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_2 <- factor(vote$Q11_2)
+vote$Q11_2 <- recode_factor(vote$Q11_2, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_3 <- factor(vote$Q11_3)
+vote$Q11_3 <- recode_factor(vote$Q11_3, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_4 <- factor(vote$Q11_4)
+vote$Q11_4 <- recode_factor(vote$Q11_4, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_5 <- factor(vote$Q11_5)
+vote$Q11_5 <- recode_factor(vote$Q11_5, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_6 <- factor(vote$Q11_6)
+vote$Q11_6 <- recode_factor(vote$Q11_6, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q16 <- factor(vote$Q16)
+vote$Q16 <- recode_factor(vote$Q16, "1" = "Very Easy", "2" = "Somewhat Easy", "3" = "Somewhat Difficult", "4" = "Very Difficult", "-1" = "No Response")
+
+vote$Q17_1 <- factor(vote$Q17_1)
+vote$Q17_1 <- recode_factor(vote$Q17_1, "1" = "Very Confident", "2" = "Somewhat Confident", "3" = "Not Very Confident", "4" = "Not at all Confident", "-1" = "No Response")
+
+vote$Q17_2 <- factor(vote$Q17_2)
+vote$Q17_2 <- recode_factor(vote$Q17_2, "1" = "Very Confident", "2" = "Somewhat Confident", "3" = "Not Very Confident", "4" = "Not at all Confident", "-1" = "No Response")
+
+vote$Q17_3 <- factor(vote$Q17_3)
+vote$Q17_3 <- recode_factor(vote$Q17_3, "1" = "Very Confident", "2" = "Somewhat Confident", "3" = "Not Very Confident", "4" = "Not at all Confident", "-1" = "No Response")
+
+vote$Q17_4 <- factor(vote$Q17_4)
+vote$Q17_4 <- recode_factor(vote$Q17_4, "1" = "Very Confident", "2" = "Somewhat Confident", "3" = "Not Very Confident", "4" = "Not at all Confident", "-1" = "No Response")
+
+vote$Q20 <- factor(vote$Q20)
+vote$Q20 <- recode_factor(vote$Q20, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q21 <- factor(vote$Q21)
+vote$Q21 <- recode_factor(vote$Q21, "1" = "Yes", "2" = "No", "3" = "Undecided", "-1" = "No Response")
+
+vote$Q22 <- factor(vote$Q22)
+
+vote$Q23 <- factor(vote$Q23)
+vote$Q23 <- recode_factor(vote$Q23, "1" = "Donald Trump", "2" = "Joe Biden", "3" = "Unsure", "-1" = "No Response")
+
+vote$Q24 <- factor(vote$Q24)
+vote$Q24 <- recode_factor(vote$Q24, "1" = "Mail in", "2" = "In person before elec. day", "3" = "In person on elec. day", "4" = "other", "-1" = "No Response")
+
+vote$Q25 <- factor(vote$Q25)
+vote$Q25 <- recode_factor(vote$Q25, "1" = "Very Closely", "2" = "Somewhat Closely", "3" = "Not Very Closely", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q26 <- factor(vote$Q26)
+vote$Q26 <- recode_factor(vote$Q26, "1" = "Always", "2" = "Sometimes", "3" = "Rarely", "4" = "Never", "-1" = "No Response")
+
+vote$Q30 <- factor(vote$Q30)
+vote$Q30 <- recode_factor(vote$Q30, "1" = "Republican", "2" = "Democrat", "3" = "Independent", "4" = "Other", "5" = "No Preference", "-1" = "No Response")
+
+vote$Q19_1 <- factor(vote$Q19_1)
+
+vote$Q15 <- factor(vote$Q15)
+
+vote$Q14 <- factor(vote$Q14)
 ```
 
 
@@ -542,7 +634,7 @@ vote$Q5 <- recode_factor(vote$Q5, "1" = "2020 Matters", "2" = "2020 Doesn't Matt
 voteTraining <- subset(vote, split == TRUE)
 voteTesting  <- subset(vote, split == FALSE)
 
-m <- polr(voter_category ~ educ + income_cat + race + gender + ppage + Q18_1+ Q8_1 + Q5, data = voteTraining, Hess = TRUE)
+m <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q18_1+ Q8_1 + Q5 + Q6 + Q7 + Q9_1 + Q9_2 + Q9_3 + Q9_4 + Q10_1 + Q11_1 + Q16 + Q20 + Q21 + Q23 + Q24 + Q25 + Q26 + Q30 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_9 + Q18_10 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_6 + Q8_7 + Q8_8 + Q8_9 + Q15 + Q14, data = voteTraining, Hess = TRUE)
 summary(m)
 
 # + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_9 + Q18_10 
