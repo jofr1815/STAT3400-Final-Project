@@ -523,7 +523,7 @@ By removing the weight variable, the model does fit ever so slightly better by t
 anova(basicOLR, basicOLR_r)
 ```
 
-While the reduced model is slightly more simple, the full model is still better. The P-value is extremely low, though the likelihood radio statistic is fairly small, indicating that the difference isn't very large. 
+While the reduced model is slightly more simple, the full model is still better. The P-value is extremely low, though the likelihood radio statistic is fairly small, indicating that the difference isn't very large even if it is statistically significant. 
 
 ### 1c: Initial Conclusions
 
@@ -716,22 +716,68 @@ confusionMatrix(predFull_df$prediction, predFull_df$target)
 
 The full model was significantly more accurate than the basic one, placing the responses in the testing subset into the correct category 58.9% of the time. More importantly, the model much better at identifying nonvoters, with an accuracy rate of 64%, in contrast to the basic model's 32.2%. The always category also shows a slight increase with 37.9% accuracy as opposed to the basic model's 33.5%. In addition, nonvoters are mistaken for voters in the always category a mere 4.3% of the time, and vice verse at a rate of 1.4%. The sporadic category is also identified a slightly higher percentage of the time. Overall, the model has become significantly more effective at differentiating between the nonvoters and sporadic voters, but still struggles to discern between the sporadic and always vote categories. 
 
-Multicollinearity is likely a problem in this model, partially due to the nature of the questions. For some variables, respondents were given the same question repeatedly for different things, particularly shown in the trust in government plots. For example, if an individual does not have any trust in the presidency, it is not likely that they would have complete trust in congress or the supreme court. VIF's can be used to examine any collinearity. 
+Multicollinearity is likely a problem in this model, partially due to the nature of the questions. For some variables, respondents were given the same question repeatedly for different things, particularly shown in the trust in government plots. For example, if an individual does not have any trust in the presidency, it is not likely that they would have complete trust in congress or the supreme court. VIF's can be used to confirm this 
 
 ```{r}
-vif(m)
+vif(fullOLR)
 ```
 
-Many of these variables have high VIF's with coefficients of many variables exceeding 5, several exceeding 10, and a few even exceeding 15. A reduced model will be constructed by removing the variable with the highest VIF until all are less than 10. 
+Many of these variables have high VIF's with coefficients of many variables exceeding 5, several exceeding 10, and a few even exceeding 15. This is strong evidence that multicollinearity exists within the full model.
 
 #### The Reduced Model
+A reduced model will be constructed by removing the variable with the highest VIF until all are less than 10, using a backwards elimination method.
+```{r}
+reducedOLR <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q2_1 + Q2_2 + Q2_3 + Q2_3 + Q2_4 + Q2_5 + Q2_6 + Q2_7 + Q2_8 + Q2_9 + Q2_10 + Q3_2 + Q3_3 + Q3_4 + Q3_5 + Q3_6 + Q4_1 + Q4_3 + Q4_4 + Q4_5 + Q4_6 + Q5 + Q6 + Q7 + Q8_1 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_7 + Q8_8 + Q8_9 + Q9_1 + Q9_2 + Q9_3 + Q9_4 + Q10_1 + Q10_2 + Q10_3 + Q10_4 + Q11_1 + Q11_2 + Q11_3 + Q11_4 + Q11_5 + Q11_6 + Q14 + Q15 + Q16 + Q17_1 + Q17_2 + Q17_4 + Q18_1 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_10 + Q20 + Q21 + Q24 + Q25 + Q26 + Q30, data = voteTraining, Hess = TRUE)
+
+#Removed: Q4_2, Q17_3, Q23, Q8_6, Q3_1, Q18_9
+
+predictVoteReduced = predict(reducedOLR, voteTesting)
+
+predReduced_df <- tibble("target" = voteTesting$voter_category, "prediction" = predictVoteReduced)
+
+reduced_conf_mat <- confusion_matrix(targets = predReduced_df$target, predictions = predReduced_df$prediction)
+plot_confusion_matrix(reduced_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predReduced_df$prediction, predReduced_df$target)
+```
+The variables Q4_2, Q17_3, Q23, Q8_6, Q3_1, and Q18_9 were removed, as all had a VIF of greater than 10. The reduced model was slightly more accurate, with an overall accuracy rate of 59.2%. Every category experienced a slight increase in accuracy though the difference was rather small. 
 
 ```{r}
-
+anova(fullOLR, reducedOLR)
 ```
+
+As shown in the anova results, the full model was not statistically better with a p-value of 0.22. Another model will be created based off of the same method, with a VIF cutoff of 5 instead. 
+
+```{r}
+reducedOLR2 <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q2_1 + Q2_2 + Q2_3 + Q2_3 + Q2_5 + Q2_6 + Q2_7 + Q2_8 + Q2_9 + Q2_10 + Q3_3 + Q3_4 + Q3_5 + Q3_6 + Q4_4 + Q4_5 + Q4_6 + Q5 + Q6 + Q7 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_9 + Q9_1 + Q9_2 + Q9_4 + Q10_1 + Q10_2 + Q10_3 + Q10_4 + Q11_1 + Q11_2 + Q11_3 + Q11_4 + Q11_5 + Q11_6 + Q15 + Q16 + Q17_2 + Q17_4 + Q18_1 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_10 + Q20 + Q21 + Q24 + Q25 + Q26 , data = voteTraining, Hess = TRUE)
+
+#Removed: Q17_1, Q9_3, Q8_1, Q4_1, Q30, Q8_8, Q8_7, Q3_2, Q4_3, Q14, Q2_4
+
+predictVoteReduced2 = predict(reducedOLR2, voteTesting)
+
+predReduced2_df <- tibble("target" = voteTesting$voter_category, "prediction" = predictVoteReduced2)
+
+reduced2_conf_mat <- confusion_matrix(targets = predReduced2_df$target, predictions = predReduced2_df$prediction)
+plot_confusion_matrix(reduced2_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predReduced2_df$prediction, predReduced2_df$target)
+
+#vif(reducedOLR2)
+```
+
+```{r}
+anova(reducedOLR2, reducedOLR)
+```
+The second reduced model saw a decrease in accuracy among the always and never/rarely categories, and a slight increase of accuracy among the sporadic category. Tho overall accuracy rate also did not change much. The anova test confirms this, showing that the removed variables are statistically signficant with a p value of 0.002. 
 
 ### 2c: Conclusions
 
+The first reduced model was the best, as by the methods used was the most accurate without eliminating variables that were considered significant by the anova tests. This model correctly prediced sporadic voters 71.6% of the time, nonvoters 64.1 % of the time, and participant that always vote 37.9% of the time. Collectively, the overall accuracy rate was 59.25%, which was much better than the basic model. 
 
 ## Final conclusion
 
+In the basic set of predictors, every single one was somewhat significant in predicting a participants voter category. In particular, having an income of $40k or less and a high school education or less was the strongest indicator of voter category. The graphical observations were also confirmed by anova tests. The basic model was 48.97% accurate, which while being better than picking categories at random or picking the sporadic category every time left a lot to be desired. In particular, the model was no better at predicting the never/rarely or always category than selecting one at random. The worst case scenario rate wasn't terrible, which demonstrated that the model had issues differentiating between sporadic and the other two categories individually. 
+
+In the full data set, having little trust in government was generally associated with non-voters, though the "No Response" level was a much stronger indicator. These results were also observed among experiencing barriers of entry to voting with every variable in this category having some sort of statistical significance. For sake of time and simplicity, creating graphics and their associated anova tests were left out for the rest of the full set. The full set included 79 predictor variables. An ordinal logistic model was fitted on the full set of predictors, greatly improving on the basic model's results. As collinearity was indicated by variance inflation factors, a two reduced models were created using a backwards elimination technique with cutoffs at VIF values of 5 and 10. The model wit a cutoff of 10 had the best results, as it was the simplest of the three full set models that did not loose any significant variables. The final overall accuracy rate was 59.25%. 
+
+This project has shown that their are an absolutely massive number of 
