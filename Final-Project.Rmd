@@ -39,11 +39,14 @@ library(MASS)
 library(car)
 library(caTools)
 library(corrplot)
+library(caret)
+library(cvms)
+library(cowplot)
 ```
 
 #### Recoding variables
 
-Before analysis can begin, some data cleaning must be performed. Firstly, voter categories to a numeric variable and assign it to a new variable called voteChance. This will be useful later to examine and compare means across levels of the factor variables. The vast majority of the columns contain factor variables, which are recoded from numbers to the worded response (Such as agree, disagree, etc) to simplify interpretation of the results. The rest of the variables are recoded from their numeric factor values (used to reduce the size of the data set file) into their corresponding worded responses. Out of the data set a few variables were left out, as they relied on the answer of another variable, or were mostly filled with "No Response". This included questions 19 (and its 10 associated sub-questions, Q19_1...Q19_10), 27 (As it was used to create the response variable), 28, 29, 31, 32, and 33. Following the data cleaning, it is then separated into training (80%) and testing (20%) sets.
+Before analysis can begin, some data cleaning must be performed. Firstly, voter categories to a numeric variable and assign it to a new variable called voteChance. This will be useful later to examine and compare means across levels of the factor variables. The vast majority of the columns contain factor variables, which are recoded from numbers to the worded response (Such as agree, disagree, etc) to simplify interpretation of the results. The rest of the variables are recoded from their numeric factor values (used to reduce the size of the data set file) into their corresponding worded responses. Out of the data set a few variables were left out, as they relied on the answer of another variable, or were mostly filled with "No Response". This included questions 19 (and its 10 associated sub-questions, Q19_1...Q19_10), 22, 27 (As it was used to create the response variable), 28, 29, 31, 32, and 33. Following the data cleaning, it is then separated into training (80%) and testing (20%) sets.
 
 Voter Category Levels: always -> 3, sporadic -> 2, never -> 1
 
@@ -53,7 +56,12 @@ vote$voteChance <- as.numeric(recode_factor(vote$voter_category, "rarely/never" 
 vote$voter_category = factor(vote$voter_category, levels = c("rarely/never", "sporadic", "always"), ordered = TRUE)
 
 vote$income_cat <- as.factor(vote$income_cat)
+
 vote$educ <- as.factor(vote$educ)
+
+vote$gender <- as.factor(vote$gender)
+
+vote$race <- as.factor(vote$race)
 
 vote$Q2_1 <- factor(vote$Q2_1)
 vote$Q2_1 <- recode_factor(vote$Q2_1, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
@@ -248,15 +256,11 @@ vote$Q18_9 <- recode_factor(vote$Q18_9, "1" = "Yes", "2" = "No", "-1" = "No Resp
 vote$Q18_10 <- factor(vote$Q18_10)
 vote$Q18_10 <- recode_factor(vote$Q18_10, "1" = "Yes", "2" = "No", "-1" = "No Response")
 
-vote$Q19_1 <- factor(vote$Q19_1)
-
 vote$Q20 <- factor(vote$Q20)
 vote$Q20 <- recode_factor(vote$Q20, "1" = "Yes", "2" = "No", "-1" = "No Response")
 
 vote$Q21 <- factor(vote$Q21)
 vote$Q21 <- recode_factor(vote$Q21, "1" = "Yes", "2" = "No", "3" = "Undecided", "-1" = "No Response")
-
-vote$Q22 <- factor(vote$Q22)
 
 vote$Q23 <- factor(vote$Q23)
 vote$Q23 <- recode_factor(vote$Q23, "1" = "Donald Trump", "2" = "Joe Biden", "3" = "Unsure", "-1" = "No Response")
@@ -306,14 +310,10 @@ ggplot(vote, aes(x = factor(voter_category, levels = c("rarely/never", "sporadic
 The chart above shows the distribution of the voter categories across the surveyed population. The sporadic category contained the most respondents, with the other two categories demonstrating a fairly normal distribution. The data does appear to be a bit skewed towards the right, through it is hard to tell as there are only 3 categories. 
 
 ```{r fig1, fig.height=10, fig.width=20}
-library(ggplot2)
-library(cowplot)
-library(dplyr)
 
 # Remove just the basic variables
 voteBasic <- vote %>% dplyr::select(educ, race, gender, income_cat, ppage, voter_category, weight, voteChance)
 
-head(voteBasic)
 
 #ToDo:
 #      1. Remove all legends except one
@@ -463,7 +463,7 @@ Thankfully, there is a MUCH more effective and correct way to build a model on d
 Similarly to the MLR model, all of the basic predictors will be used to predict the voter category. Here the training set will be used, whereas the MLR model used the full data set. 
 
 ```{r}
-basicOLR <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight, data = basicTraining, Hess = TRUE)
+basicOLR <- polr(voter_category ~ income_cat + educ + gender + ppage + weight + race, data = basicTraining, Hess = TRUE)
 summary(basicOLR)
 ```
 
@@ -484,41 +484,58 @@ As can be seen, almost every predictor was significant, with highschool or less 
 Now that a prediction model has been built, it can be tested on the testing data. The result of this is a matrix known as the confusion matrix. This matrix breaks down the predicted vs actual voter categories. Anything on the main diagonal was placed into the correct category. This provides valueable insight to not only the overall accuracy of the model, but which individual categories the model is having trouble predicting. 
 
 ```{r}
-predictvote = predict(basicOLR, basicTesting)
-conf <- table(basicTesting$voter_category, predictvote)
-conf
-mean(as.character(basicTesting$voter_category) != as.character(predictvote))
+predictBasic = predict(basicOLR, basicTesting)
 
-confusionMatrix(basicTesting$voter_category, predictVote)
+predBasic_df <- tibble("target" = basicTesting$voter_category, "prediction" = predictBasic)
+
+basic_conf_mat <- confusion_matrix(targets = predBasic_df$target, predictions = predBasic_df$prediction)
+plot_confusion_matrix(basic_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predBasic_df$prediction, predBasic_df$target)
 ```
 
-
-### 1c: Initial Conclusions
-
-// Initial conclusions here:
-//    1. Initial visualizations
-//    2. Anova (which variables and levels have a significant effect on voter category)
-//    3. Model
-//    4. Next steps for full dataset
-
+Overall, the model is 48.97% accurate, with a 95% confidence interval from 46.07% to 51.88%. This is better than a random choice, but could be quite a bit better. The "no information rate" statistic is the accuracy of the model should it select the largest response category (sporadic) every time. This value is not covered by the 95% confidence interval, and it can be concluded that the basic variables are significant in predicting voter category. As shown in the plot, it correctly the sporadic category with 68% accuracy, the always category with 33.5% accuracy, and the rarely/never category with 33.2% accuracy. The model is not any better at identifying the always or rarely/never participants with any more accuracy than selecting a category at random. However, it rarely places respondents into the opposite category, with only 6.2% of the respondents of the rarely category being placed into the always category, and 10.1% of the always category being placed into the never category. This demonstrates that the model is having a hard time differentiating between sporadic and the other two levels, while rarely confusing the rarely and always categories with each other. To try to improve the model, we can look for multicollinearity with variance inflation factors (VIF's) and a correlation plot. 
 
 ```{r}
 vif(basicOLR)
 
-
 corrplot(cov2cor(vcov(basicOLR)), method = "color")
 ```
 
+The VIFs look fairly good, though weight and education both have higher factors than the rest. The correlation plot also demonstrates this. We can remove weight from the model to correct this, and find out if it has any effect on the overall fit.
 
+```{r}
+basicOLR_r <- polr(voter_category ~ educ + income_cat + race + gender + ppage , data = basicTraining, Hess = TRUE)
+summary(basicOLR_r)
+predictBasic = predict(basicOLR, basicTesting)
 
+predBasic_df <- tibble("target" = basicTesting$voter_category, "prediction" = predictBasic)
+
+basic_conf_mat <- confusion_matrix(targets = predBasic_df$target, predictions = predBasic_df$prediction)
+plot_confusion_matrix(basic_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predBasic_df$prediction, predBasic_df$target)
+```
+
+By removing the weight variable, the model does fit ever so slightly better by total accuracy, though the accuracy of the rarely/never category slightly drops. The AIC also increases by a small amount. 
+
+```{r}
+anova(basicOLR, basicOLR_r)
+```
+
+While the reduced model is slightly more simple, the full model is still better. The P-value is extremely low, though the likelihood radio statistic is fairly small, indicating that the difference isn't very large. 
+
+### 1c: Initial Conclusions
+
+In conclusion, every prediction variable in the basic set was correlated with a difference in voter category. The most significant of these were an education of high school or less, income of less than $40k per year and age. As demonstrated, linear regression is the completely wrong tool to use for categorical response variables, though the results are rather interesting to look at. The ordinal logistic model of all the basic predictors was fairly accurate at ~49% overall accuracy, though still it still struggles to differentiate the middle category from the two outer ones. Removing weight to eliminate a slight collinearity "issue" slightly improved the overall accuracy, but did not improve the model.
 
 ## Part 2: The Full Dataset
 
-Part 2 of this analysis will use the methods of part 1, but applied to a larger set of variables. Hopefully this will lead to insight as to a voter's attitude towards the election and/or government, experiencing barriers to voting, party affiliation, and how this influences their likelyhood to vote. Part of this will also include the creation of composite scores (based on questions will multiple answers), as there are many questions with 5+ sub questions. 
+Part 2 of this analysis will use the methods of part 1, but applied to a larger set of variables. Hopefully this will lead to insight as to a voter's attitude towards the election and/or government, experiencing barriers to voting, party affiliation, and how this influences their likelihood to vote. Many of the variables in the full set include several parts, such as trust in the many parts of government, or experiencing barriers of entry to voting. There are 79 total independent variables, in contrast to part 1's 6. For sake of simplicity only a few variables have been plotted and have anova results. 
 
 ### 2a: Analysis
 
-```{r}
+```{r fig2, fig.height=10, fig.width=20}
 trust1 <- ggplot(vote, aes(x = factor(Q8_1, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
   geom_bar(position = "fill") + 
   xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Presidency") +# Add axis labels
@@ -573,33 +590,37 @@ trust9 <- ggplot(vote, aes(x = factor(Q8_9, levels = c("A lot", "Some", "Not muc
   guides(fill = guide_legend(title = "Voter Category")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
 
-#plot_grid(trust1, trust2, trust3, trust4, trust5, trust6, trust7, trust8, trust9)
-trust1
-trust2
-trust3
-trust4
-trust5
-trust6
-trust7
-trust8
-trust9
+plot_grid(trust1, trust2, trust3, trust4, trust5, trust6, trust7, trust8, trust9)
 ```
 
+The plots above show each variable that asked respondents about their trust in government. As expected, generally the less someone trusts the government, the more likely they are to be part of the rarely/never voting category. Interestingly those who refused to answer the question were much more likely to be part of that category. 
+
+Next, AOV tests can be conducted to determine which variables are significant in a difference of mean voter category. For simplicity and time constraints, the difference between specific levels will not be examined at this time.
 ```{r}
-TukeyHSD(aov(vote$voteChance ~ vote$Q8_1))
+summary(aov(voteChance ~ Q8_1, data = vote))
+summary(aov(vote$voteChance ~ vote$Q8_2))
+summary(aov(vote$voteChance ~ vote$Q8_3))
+summary(aov(vote$voteChance ~ vote$Q8_4))
+summary(aov(vote$voteChance ~ vote$Q8_5))
+summary(aov(vote$voteChance ~ vote$Q8_6))
+summary(aov(vote$voteChance ~ vote$Q8_7))
+summary(aov(vote$voteChance ~ vote$Q8_8))
+summary(aov(vote$voteChance ~ vote$Q8_9))
 ```
 
+Every variable involving trust in various parts of the government was significant at the 95% confidence level, confirming what was observed in the plots. Only one variable was not significant at the 99% level, Q8_2 which corresponds to trust in Congress. 
 
-```{r}
+These same steps will be repeated for barriers of entry to voting.
+```{r fig3, fig.height=10, fig.width=20}
 barrier1 <- ggplot(vote, aes(x = factor(Q18_1, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
   geom_bar(position = "fill") + 
-  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("No Correct Id") +# Add axis labels
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Didn't Have Correct Id") +# Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
 
 barrier2 <- ggplot(vote, aes(x = factor(Q18_2, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
   geom_bar(position = "fill") + 
-  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Couldnt Find Polling Place") +# Add axis labels
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Couldn't Find Polling Place") +# Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
 
@@ -611,7 +632,7 @@ barrier3 <- ggplot(vote, aes(x = factor(Q18_3, levels = c("Yes", "No", "Not at a
 
 barrier4 <- ggplot(vote, aes(x = factor(Q18_4, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
   geom_bar(position = "fill") + 
-  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Unable to Acess Poling Place") +# Add axis labels
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Unable to Acess Polling Place") +# Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
 
@@ -650,60 +671,64 @@ barrier10 <- ggplot(vote, aes(x = factor(Q18_10, levels = c("Yes", "No", "Not at
   xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Didn't get Ballot in Time") +# Add axis labels
   guides(fill = guide_legend(title = "Voter Category")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+plot_grid(barrier1, barrier2, barrier3, barrier4, barrier5, barrier6, barrier7, barrier8, barrier9, barrier10)
 
-barrier1
-barrier2
-barrier3
-barrier4
-barrier5
-barrier6
-barrier7
-barrier8
-barrier9
-barrier10
 ```
+
+The barriers of entry experienced include waiting more than an hour, being unable to find a polling place, and not receiving a ballot in time. Again, as expected if a respondent experienced a barrier of entry, they appear to be less likely to vote. Similarly to the trust in government plots, participants who refused to answer the question were much more likely to be a non-voter. This group for any of these given variables consists of ~50 or so total responses. While making up only ~1% of the survey responses, it is still a strong indicator that someone would be part of the nonvoter category. This will be quantified with AOV tests, in addition to a TukeyHSD test to examine the significance of the "No Response" category. 
 
 ```{r}
 TukeyHSD(aov(vote$voteChance ~ vote$Q18_1))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_2))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_3))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_4))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_5))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_6))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_7))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_8))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_9))
-TukeyHSD(aov(vote$voteChance ~ vote$Q18_10))
+summary(aov(vote$voteChance ~ vote$Q18_2))
+summary(aov(vote$voteChance ~ vote$Q18_3))
+summary(aov(vote$voteChance ~ vote$Q18_4))
+summary(aov(vote$voteChance ~ vote$Q18_5))
+summary(aov(vote$voteChance ~ vote$Q18_6))
+summary(aov(vote$voteChance ~ vote$Q18_7))
+summary(aov(vote$voteChance ~ vote$Q18_8))
+summary(aov(vote$voteChance ~ vote$Q18_9))
+summary(aov(vote$voteChance ~ vote$Q18_10))
 ```
 
+Every single barrier of entry variable was associated with a difference in mean voter category. The tukeyHSD test also demonstrates that the "no response" category is statistically significant in this context, and is associated with a much larger difference than the other two levels. 
+
+So far this has only examined 25 out of the total of 79 variables. For sake of time visualizations and AOV tests will not be shown for the remainder of the prediction variables. It can be concluded that lack of trust in the various aspects of government and experiencing barriers of entry to voting do have a significant impact on a participants likelihood to vote. In addition, a lack of cooperation in the survey is also associated with this, with a much larger effect. 
+
+### 2b: Prediction Model
+
+#### The Full Model
+A prediction model based off of the entire set of predictors (aside from those left out in the initial setup) can now be fitted. As it has already been demonstrated in this project, and MLR model is not particularly useful. As such an ordinal logistic regression model will be fitted, and compared to the initial basic model. As there are literally hundreds of coefficients, the summary of the model has been left out in favor of the prediction results. To examine the meaning of each variable, the code book is linked here: https://github.com/fivethirtyeight/data/blob/master/non-voters/nonvoters_codebook.pdf
 
 ```{r}
 # Full OLR Model
 
-m <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q18_1 + Q5 + Q6 + Q7 + Q9_1 + Q9_2 + Q9_3 + Q9_4 + Q10_1 + Q11_1 + Q11_2 + Q11_3 + Q11_4 + Q11_5 + Q11_6 + Q16 + Q20 + Q21 + Q24 + Q25 + Q26 + Q30 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_9 + Q18_10 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_7 + Q8_8 + Q8_9 + Q15 + Q14 + Q2_1 + Q2_2 + Q2_3 + Q2_4 + Q2_5 + Q2_6 + Q2_7 + Q2_8 + Q2_9 + Q2_10 + Q3_2 + Q3_3 + Q3_4 + Q3_5 + Q3_6 + Q4_1  + Q4_3 + Q4_4 + Q4_5, data = voteTraining, Hess = TRUE)
-summary(m)
+fullOLR <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q2_1 + Q2_2 + Q2_3 + Q2_3 + Q2_4 + Q2_5 + Q2_6 + Q2_7 + Q2_8 + Q2_9 + Q2_10 + Q3_1 + Q3_2 + Q3_3 + Q3_4 + Q3_5 + Q3_6 + Q4_1 + Q4_2 + Q4_3 + Q4_4 + Q4_5 + Q4_6 + Q5 + Q6 + Q7 + Q8_1 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_6 + Q8_7 + Q8_8 + Q8_9 + Q9_1 + Q9_2 + Q9_3 + Q9_4 + Q10_1 + Q10_2 + Q10_3 + Q10_4 + Q11_1 + Q11_2 + Q11_3 + Q11_4 + Q11_5 + Q11_6 + Q14 + Q15 + Q16 + Q17_1 + Q17_2 + Q17_3 + Q17_4 + Q18_1 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_9 + Q18_10 + Q20 + Q21 + Q23 + Q24 + Q25 + Q26 + Q30, data = voteTraining, Hess = TRUE)
 
-#Removed: 
+predictVote = predict(fullOLR, voteTesting)
 
-predictvote = predict(m, voteTesting)
-table(basicTesting$voter_category, predictvote)
-mean(as.character(voteTesting$voter_category) != as.character(predictvote))
+predFull_df <- tibble("target" = voteTesting$voter_category, "prediction" = predictVote)
+
+full_conf_mat <- confusion_matrix(targets = predFull_df$target, predictions = predFull_df$prediction)
+plot_confusion_matrix(full_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predFull_df$prediction, predFull_df$target)
 ```
+
+The full model was significantly more accurate than the basic one, placing the responses in the testing subset into the correct category 58.9% of the time. More importantly, the model much better at identifying nonvoters, with an accuracy rate of 64%, in contrast to the basic model's 32.2%. The always category also shows a slight increase with 37.9% accuracy as opposed to the basic model's 33.5%. In addition, nonvoters are mistaken for voters in the always category a mere 4.3% of the time, and vice verse at a rate of 1.4%. The sporadic category is also identified a slightly higher percentage of the time. Overall, the model has become significantly more effective at differentiating between the nonvoters and sporadic voters, but still struggles to discern between the sporadic and always vote categories. 
+
+Multicollinearity is likely a problem in this model, partially due to the nature of the questions. For some variables, respondents were given the same question repeatedly for different things, particularly shown in the trust in government plots. For example, if an individual does not have any trust in the presidency, it is not likely that they would have complete trust in congress or the supreme court. VIF's can be used to examine any collinearity. 
 
 ```{r}
 vif(m)
 ```
-```{r}
-corrplot(cov2cor(vcov(m)), method = "color")
-```
-```{r}
-coefs <- coef(summary(m))
-pval <- pnorm(abs(coefs[,"t value"]), lower.tail = FALSE) * 2
-coefs <- cbind(coefs, "p value" = pval)
-```
 
+Many of these variables have high VIF's with coefficients of many variables exceeding 5, several exceeding 10, and a few even exceeding 15. A reduced model will be constructed by removing the variable with the highest VIF until all are less than 10. 
 
-### 2b: Prediction Model
+#### The Reduced Model
+
+```{r}
+
+```
 
 ### 2c: Conclusions
 
