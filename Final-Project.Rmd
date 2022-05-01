@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 # Analysis of Non-Voter Data
@@ -276,8 +276,6 @@ vote$Q26 <- recode_factor(vote$Q26, "1" = "Always", "2" = "Sometimes", "3" = "Ra
 
 vote$Q30 <- factor(vote$Q30)
 vote$Q30 <- recode_factor(vote$Q30, "1" = "Republican", "2" = "Democrat", "3" = "Independent", "4" = "Other", "5" = "No Preference", "-1" = "No Response")
-
-head(vote)
 ```
 
 ```{r}
@@ -449,6 +447,7 @@ The residuals vs fitted plot shows three distinct lines (as voter category has o
 ```{r}
 plot(lmodb1, which = 2)
 ```
+
 The normal Q-Q plot shows that the data is fairly normal towards the center, but deviates at the edges. A transformation (such as a square root or logarithm) would help to correct this, but is not needed as the MLR model was fitted purely just to see what would happen. 
 
 ```{r}
@@ -780,4 +779,6 @@ In the basic set of predictors, every single one was somewhat significant in pre
 
 In the full data set, having little trust in government was generally associated with non-voters, though the "No Response" level was a much stronger indicator. These results were also observed among experiencing barriers of entry to voting with every variable in this category having some sort of statistical significance. For sake of time and simplicity, creating graphics and their associated anova tests were left out for the rest of the full set. The full set included 79 predictor variables. An ordinal logistic model was fitted on the full set of predictors, greatly improving on the basic model's results. As collinearity was indicated by variance inflation factors, a two reduced models were created using a backwards elimination technique with cutoffs at VIF values of 5 and 10. The model wit a cutoff of 10 had the best results, as it was the simplest of the three full set models that did not loose any significant variables. The final overall accuracy rate was 59.25%. 
 
-This project has shown that their are an absolutely massive number of 
+This project has shown that their are an absolutely massive number of factors that are associated with an individuals voting preferences. Age, education level, income, party affiliation, trust in government, and recent life events (such as losing a job or being diagnosed with COVID19) were all associated with a change in the distribution of voter category. 
+
+In the future, I would like to perform examinations and create graphics for all of the predictors, in addition to performing ANOVA and pair-wise comparisons to determine which are significant and the most influential. These results would be used to eliminate any non-significant predictors, and gain more insight to the psychology of voters. I would also like to learn and apply a few different model selection methods such as LASSO, AIC, or some sort of factor analysis to narrow down which variables are the most important, and build a more accurate model. 
