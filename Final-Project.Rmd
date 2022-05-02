@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
 ```
 
 # Analysis of Non-Voter Data
@@ -17,6 +18,7 @@ For my final project, I will be doing an analysis of Non-Voter data, from fiveth
 
 ### Background Information
 
+In the last election I did not receive a ballot before election day, despite having an accurate up to date voter registration and address. During the process of finding a time and place to vote, I wondered whether it was worth it or not, and if my vote actually made a difference. Being a student and having the time I was able to vote, though experiences such as my own are extremely common. Thousands if not millions of U.S. citizens have similar experiences every year, and along with many other factors result in an extremely low turnout of eligible voters. In any given presidential election, the U.S. experiences a voter turnout of roughly 55% of the voting population voting and 60% of voting age citizens voting (Pew Research). This figure places the U.S. among the worst voter turnout rates of developed countries. When this project was assigned I went looking for data sets covering a wide variety of topics, and I stumbled across FiverThirtyEight's non-voter data set. After exploring the code book and general information, I was determined to use it for my final project. 
 
 ### About the Data Set
 
@@ -530,7 +532,7 @@ In conclusion, every prediction variable in the basic set was correlated with a 
 
 ## Part 2: The Full Dataset
 
-Part 2 of this analysis will use the methods of part 1, but applied to a larger set of variables. Hopefully this will lead to insight as to a voter's attitude towards the election and/or government, experiencing barriers to voting, party affiliation, and how this influences their likelihood to vote. Many of the variables in the full set include several parts, such as trust in the many parts of government, or experiencing barriers of entry to voting. There are 79 total independent variables, in contrast to part 1's 6. For sake of simplicity only a few variables have been plotted and have anova results. 
+Part 2 of this analysis will use the methods of part 1, but applied to a larger set of variables. Hopefully this will lead to insight as to a voter's attitude towards the election and/or government, experiencing barriers to voting, party affiliation, and how this influences their likelihood to vote. Many of the variables in the full set include several parts, such as trust in the many parts of government, or experiencing barriers of entry to voting. There are 79 total independent variables, in contrast to part 1's 6. For sake of simplicity only a few variables have been plotted and have ANOVA results. 
 
 ### 2a: Analysis
 
@@ -745,7 +747,7 @@ The variables Q4_2, Q17_3, Q23, Q8_6, Q3_1, and Q18_9 were removed, as all had a
 anova(fullOLR, reducedOLR)
 ```
 
-As shown in the anova results, the full model was not statistically better with a p-value of 0.22. Another model will be created based off of the same method, with a VIF cutoff of 5 instead. 
+As shown in the ANOVA results, the full model was not statistically better with a p-value of 0.22. Another model will be created based off of the same method, with a VIF cutoff of 5 instead. 
 
 ```{r}
 reducedOLR2 <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q2_1 + Q2_2 + Q2_3 + Q2_3 + Q2_5 + Q2_6 + Q2_7 + Q2_8 + Q2_9 + Q2_10 + Q3_3 + Q3_4 + Q3_5 + Q3_6 + Q4_4 + Q4_5 + Q4_6 + Q5 + Q6 + Q7 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_9 + Q9_1 + Q9_2 + Q9_4 + Q10_1 + Q10_2 + Q10_3 + Q10_4 + Q11_1 + Q11_2 + Q11_3 + Q11_4 + Q11_5 + Q11_6 + Q15 + Q16 + Q17_2 + Q17_4 + Q18_1 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_10 + Q20 + Q21 + Q24 + Q25 + Q26 , data = voteTraining, Hess = TRUE)
@@ -767,17 +769,17 @@ confusionMatrix(predReduced2_df$prediction, predReduced2_df$target)
 ```{r}
 anova(reducedOLR2, reducedOLR)
 ```
-The second reduced model saw a decrease in accuracy among the always and never/rarely categories, and a slight increase of accuracy among the sporadic category. Tho overall accuracy rate also did not change much. The anova test confirms this, showing that the removed variables are statistically signficant with a p value of 0.002. 
+The second reduced model saw a decrease in accuracy among the always and never/rarely categories, and a slight increase of accuracy among the sporadic category. Tho overall accuracy rate also did not change much. The ANOVA test confirms this, showing that the removed variables are statistically signficant with a p value of 0.002. 
 
 ### 2c: Conclusions
 
-The first reduced model was the best, as by the methods used was the most accurate without eliminating variables that were considered significant by the anova tests. This model correctly prediced sporadic voters 71.6% of the time, nonvoters 64.1 % of the time, and participant that always vote 37.9% of the time. Collectively, the overall accuracy rate was 59.25%, which was much better than the basic model. 
+The first reduced model was the best, as by the methods used was the most accurate without eliminating variables that were considered significant by the ANOVA tests. This model correctly prediced sporadic voters 71.6% of the time, nonvoters 64.1 % of the time, and participant that always vote 37.9% of the time. Collectively, the overall accuracy rate was 59.25%, which was much better than the basic model. 
 
 ## Final conclusion
 
-In the basic set of predictors, every single one was somewhat significant in predicting a participants voter category. In particular, having an income of $40k or less and a high school education or less was the strongest indicator of voter category. The graphical observations were also confirmed by anova tests. The basic model was 48.97% accurate, which while being better than picking categories at random or picking the sporadic category every time left a lot to be desired. In particular, the model was no better at predicting the never/rarely or always category than selecting one at random. The worst case scenario rate wasn't terrible, which demonstrated that the model had issues differentiating between sporadic and the other two categories individually. 
+In the basic set of predictors, every single one was somewhat significant in predicting a participants voter category. In particular, having an income of $40k or less and a high school education or less was the strongest indicator of voter category. The graphical observations were also confirmed by ANOVA tests. The basic model was 48.97% accurate, which while being better than picking categories at random or picking the sporadic category every time left a lot to be desired. In particular, the model was no better at predicting the never/rarely or always category than selecting one at random. The worst case scenario rate wasn't terrible, which demonstrated that the model had issues differentiating between sporadic and the other two categories individually. 
 
-In the full data set, having little trust in government was generally associated with non-voters, though the "No Response" level was a much stronger indicator. These results were also observed among experiencing barriers of entry to voting with every variable in this category having some sort of statistical significance. For sake of time and simplicity, creating graphics and their associated anova tests were left out for the rest of the full set. The full set included 79 predictor variables. An ordinal logistic model was fitted on the full set of predictors, greatly improving on the basic model's results. As collinearity was indicated by variance inflation factors, a two reduced models were created using a backwards elimination technique with cutoffs at VIF values of 5 and 10. The model wit a cutoff of 10 had the best results, as it was the simplest of the three full set models that did not loose any significant variables. The final overall accuracy rate was 59.25%. 
+In the full data set, having little trust in government was generally associated with non-voters, though the "No Response" level was a much stronger indicator. These results were also observed among experiencing barriers of entry to voting with every variable in this category having some sort of statistical significance. For sake of time and simplicity, creating graphics and their associated ANOVA tests were left out for the rest of the full set. The full set included 79 predictor variables. An ordinal logistic model was fitted on the full set of predictors, greatly improving on the basic model's results. As collinearity was indicated by variance inflation factors, a two reduced models were created using a backwards elimination technique with cutoffs at VIF values of 5 and 10. The model wit a cutoff of 10 had the best results, as it was the simplest of the three full set models that did not loose any significant variables. The final overall accuracy rate was 59.25%. 
 
 This project has shown that their are an absolutely massive number of factors that are associated with an individuals voting preferences. Age, education level, income, party affiliation, trust in government, and recent life events (such as losing a job or being diagnosed with COVID19) were all associated with a change in the distribution of voter category. 
 
