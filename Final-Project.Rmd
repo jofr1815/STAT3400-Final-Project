@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = FALSE)
 ```
 
@@ -14,7 +14,7 @@ knitr::opts_chunk$set(warning = FALSE)
 
 ## Introduction
 
-For my final project, I will be doing an analysis of Non-Voter data, from fivethirtyeight's non-voter data set. I will first perform an analysis of the basic variables in order to draw preliminary insight as which influence someones likelihood to vote. I will then split the model into two sets, a training set (80%) and a testing set (20%), and create a preliminary prediction model. Then the full data set will be examined, starting with aov tests to determine which variables are significant. A larger prediction model will be fitted on every variable, and reduced models will be created through LASSO variable selection in addition to a few other techniques. Finally these models will all be compared, and the best model of them will be chosen.
+For my final project, I will be doing an analysis of Non-Voter data, from FiveThirtyEight's non-voter data set. I will first perform an analysis of the basic variables in order to draw preliminary insight as which influence someones likelihood to vote. I will then split the model into two sets, a training set (80%) and a testing set (20%), and create a preliminary prediction model. Then the full data set will be examined, starting with AOV tests to determine which variables are significant. A larger prediction model will be fitted on every variable, and reduced models will be created through VIF backwards elimination. Finally these models will all be compared, and the best model of them will be chosen.
 
 ### Background Information
 
@@ -278,6 +278,8 @@ vote$Q26 <- recode_factor(vote$Q26, "1" = "Always", "2" = "Sometimes", "3" = "Ra
 
 vote$Q30 <- factor(vote$Q30)
 vote$Q30 <- recode_factor(vote$Q30, "1" = "Republican", "2" = "Democrat", "3" = "Independent", "4" = "Other", "5" = "No Preference", "-1" = "No Response")
+
+head(vote)
 ```
 
 ```{r}
@@ -313,12 +315,6 @@ The chart above shows the distribution of the voter categories across the survey
 
 # Remove just the basic variables
 voteBasic <- vote %>% dplyr::select(educ, race, gender, income_cat, ppage, voter_category, weight, voteChance)
-
-
-#ToDo:
-#      1. Remove all legends except one
-#
-#format: basicBar1 -> basic bar plot #11
 
 #Education
 basicBar1 <- ggplot(voteBasic, aes(x = factor(educ, levels = c("High school or less", "Some college", "College")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
@@ -740,6 +736,8 @@ reduced_conf_mat <- confusion_matrix(targets = predReduced_df$target, prediction
 plot_confusion_matrix(reduced_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
 
 confusionMatrix(predReduced_df$prediction, predReduced_df$target)
+
+vif(reducedOLR)
 ```
 The variables Q4_2, Q17_3, Q23, Q8_6, Q3_1, and Q18_9 were removed, as all had a VIF of greater than 10. The reduced model was slightly more accurate, with an overall accuracy rate of 59.2%. Every category experienced a slight increase in accuracy though the difference was rather small. 
 
@@ -763,13 +761,13 @@ plot_confusion_matrix(reduced2_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE
 
 confusionMatrix(predReduced2_df$prediction, predReduced2_df$target)
 
-#vif(reducedOLR2)
+vif(reducedOLR2)
 ```
 
 ```{r}
 anova(reducedOLR2, reducedOLR)
 ```
-The second reduced model saw a decrease in accuracy among the always and never/rarely categories, and a slight increase of accuracy among the sporadic category. Tho overall accuracy rate also did not change much. The ANOVA test confirms this, showing that the removed variables are statistically signficant with a p value of 0.002. 
+To obtain all VIFs below 5, variables Q17_1, Q9_3, Q8_1, Q4_1, Q30, Q8_8, Q8_7, Q3_2, Q4_3, Q14, and Q2_4 were removed. The second reduced model saw a decrease in accuracy among the always and never/rarely categories, and a slight increase of accuracy among the sporadic category. Though overall accuracy rate also did not change much. The ANOVA test confirms this, showing that the removed variables are statistically significant with a p value of 0.002. 
 
 ### 2c: Conclusions
 
