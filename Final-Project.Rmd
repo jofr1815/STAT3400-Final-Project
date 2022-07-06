@@ -1,0 +1,784 @@
+---
+title: "Final Project"
+author: "John Frederickson"
+date: "4/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+# Analysis of Non-Voter Data
+
+## Introduction
+
+For my final project, I will be doing an analysis of Non-Voter data, from FiveThirtyEight's non-voter data set. I will first perform an analysis of the basic variables in order to draw preliminary insight as which influence someones likelihood to vote. I will then split the model into two sets, a training set (80%) and a testing set (20%), and create a preliminary prediction model. Then the full data set will be examined, starting with AOV tests to determine which variables are significant. A larger prediction model will be fitted on every variable, and reduced models will be created through VIF backwards elimination. Finally these models will all be compared, and the best model of them will be chosen.
+
+### Background Information
+
+In the last election I did not receive a ballot before election day, despite having an accurate up to date voter registration and address. During the process of finding a time and place to vote, I wondered whether it was worth it or not, and if my vote actually made a difference. Being a student and having the time I was able to vote, though experiences such as my own are extremely common. Thousands if not millions of U.S. citizens have similar experiences every year, and along with many other factors result in an extremely low turnout of eligible voters. In any given presidential election, the U.S. experiences a voter turnout of roughly 55% of the voting population voting and 60% of voting age citizens voting (Pew Research). This figure places the U.S. among the worst voter turnout rates of developed countries. When this project was assigned I went looking for data sets covering a wide variety of topics, and I stumbled across FiverThirtyEight's non-voter data set. After exploring the code book and general information, I was determined to use it for my final project. 
+
+### About the Data Set
+
+Data Set Link: https://github.com/fivethirtyeight/data/tree/master/non-voters
+
+This data set includes survey results from 5,239 participants, who were surveyed between September 15 2020 and September 25 2020. Initially 8,327 participants were surveyed, though only 64% (5,239) of the results were included based on those who were eligible to vote for at three or more elections, matching the U.S. Census Bureau's population benchmarks (to avoid over or under representing certain demographics), and eliminating most respondents whose information given did not match the voter file. Some of those not found in the voter file were left in the results, to avoid under representing non-voters who are eligible and just not registered.
+
+Basic information was collected such as income, gender, education, weight, race, and age as well as how often they vote. Each participants were put into one of three categories, never or rarely vote (voted in 0 or 1 elections), sometimes vote (more than 1, less than all but 1), and nearly always vote (voted in all or all but one election), based on how often they have voted in elections they are eligible for. Each respondent was also asked a variety of other questions, such as their political affiliation, their preferred method of voting, their plans for the 2020 election, whether their vote matters, their trust in government, barriers to voting, and whether or not the government needs change. Many of these questions were split up into sub questions, such as trust in specific parts of the government, and have multiple levels for each (A lot, some, not much, not at all, etc). 
+
+### Initial Setup
+
+```{r}
+# Load data set
+vote <- read.csv("https://raw.githubusercontent.com/fivethirtyeight/data/master/non-voters/nonvoters_data.csv")
+
+# Load libraries
+library(dplyr)
+library(ggplot2)
+library(MASS)
+library(car)
+library(caTools)
+library(corrplot)
+library(caret)
+library(cvms)
+library(cowplot)
+```
+
+#### Recoding variables
+
+Before analysis can begin, some data cleaning must be performed. Firstly, voter categories to a numeric variable and assign it to a new variable called voteChance. This will be useful later to examine and compare means across levels of the factor variables. The vast majority of the columns contain factor variables, which are recoded from numbers to the worded response (Such as agree, disagree, etc) to simplify interpretation of the results. The rest of the variables are recoded from their numeric factor values (used to reduce the size of the data set file) into their corresponding worded responses. Out of the data set a few variables were left out, as they relied on the answer of another variable, or were mostly filled with "No Response". This included questions 19 (and its 10 associated sub-questions, Q19_1...Q19_10), 22, 27 (As it was used to create the response variable), 28, 29, 31, 32, and 33. Following the data cleaning, it is then separated into training (80%) and testing (20%) sets.
+
+Voter Category Levels: always -> 3, sporadic -> 2, never -> 1
+
+```{r}
+vote$voteChance <- as.numeric(recode_factor(vote$voter_category, "rarely/never" = 1, "sporadic" = 2, "always" = 3))
+
+vote$voter_category = factor(vote$voter_category, levels = c("rarely/never", "sporadic", "always"), ordered = TRUE)
+
+vote$income_cat <- as.factor(vote$income_cat)
+
+vote$educ <- as.factor(vote$educ)
+
+vote$gender <- as.factor(vote$gender)
+
+vote$race <- as.factor(vote$race)
+
+vote$Q2_1 <- factor(vote$Q2_1)
+vote$Q2_1 <- recode_factor(vote$Q2_1, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_2 <- factor(vote$Q2_2)
+vote$Q2_2 <- recode_factor(vote$Q2_2, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_3 <- factor(vote$Q2_3)
+vote$Q2_3 <- recode_factor(vote$Q2_3, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_4 <- factor(vote$Q2_4)
+vote$Q2_4 <- recode_factor(vote$Q2_4, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_5 <- factor(vote$Q2_5)
+vote$Q2_5 <- recode_factor(vote$Q2_5, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_6 <- factor(vote$Q2_6)
+vote$Q2_6 <- recode_factor(vote$Q2_6, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_7 <- factor(vote$Q2_7)
+vote$Q2_7 <- recode_factor(vote$Q2_7, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_8 <- factor(vote$Q2_8)
+vote$Q2_8 <- recode_factor(vote$Q2_8, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_9 <- factor(vote$Q2_9)
+vote$Q2_9 <- recode_factor(vote$Q2_9, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q2_10 <- factor(vote$Q2_10)
+vote$Q2_10 <- recode_factor(vote$Q2_10, "1" = "Very Important", "2" = "Somewhat Important", "3" = "Not Very Important", "4" = "Not at all Important", "-1" = "No Response")
+
+vote$Q3_1 <- factor(vote$Q3_1)
+vote$Q3_1 <- recode_factor(vote$Q3_1, "1" = "Strongly Agree", "2" = "Somewhat Agree", "3" = "Somewhat Disagree", "4" = "Strongly Disagree", "-1" = "No Response")
+
+vote$Q3_2 <- factor(vote$Q3_2)
+vote$Q3_2 <- recode_factor(vote$Q3_2, "1" = "Strongly Agree", "2" = "Somewhat Agree", "3" = "Somewhat Disagree", "4" = "Strongly Disagree", "-1" = "No Response")
+
+vote$Q3_3 <- factor(vote$Q3_3)
+vote$Q3_3 <- recode_factor(vote$Q3_3, "1" = "Strongly Agree", "2" = "Somewhat Agree", "3" = "Somewhat Disagree", "4" = "Strongly Disagree", "-1" = "No Response")
+
+vote$Q3_4 <- factor(vote$Q3_4)
+vote$Q3_4 <- recode_factor(vote$Q3_4, "1" = "Strongly Agree", "2" = "Somewhat Agree", "3" = "Somewhat Disagree", "4" = "Strongly Disagree", "-1" = "No Response")
+
+vote$Q3_5 <- factor(vote$Q3_5)
+vote$Q3_5 <- recode_factor(vote$Q3_5, "1" = "Strongly Agree", "2" = "Somewhat Agree", "3" = "Somewhat Disagree", "4" = "Strongly Disagree", "-1" = "No Response")
+
+vote$Q3_6 <- factor(vote$Q3_6)
+vote$Q3_6 <- recode_factor(vote$Q3_6, "1" = "Strongly Agree", "2" = "Somewhat Agree", "3" = "Somewhat Disagree", "4" = "Strongly Disagree", "-1" = "No Response")
+
+vote$Q4_1 <- factor(vote$Q4_1)
+vote$Q4_1 <- recode_factor(vote$Q4_1, "1" = "Significant", "2" = "Somewhat", "3" = "Slight", "4" = "None", "-1" = "No Response")
+
+vote$Q4_2 <- factor(vote$Q4_2)
+vote$Q4_2 <- recode_factor(vote$Q4_2, "1" = "Significant", "2" = "Somewhat", "3" = "Slight", "4" = "None", "-1" = "No Response")
+
+vote$Q4_3 <- factor(vote$Q4_3)
+vote$Q4_3 <- recode_factor(vote$Q4_3, "1" = "Significant", "2" = "Somewhat", "3" = "Slight", "4" = "None", "-1" = "No Response")
+
+vote$Q4_4 <- factor(vote$Q4_4)
+vote$Q4_4 <- recode_factor(vote$Q4_4, "1" = "Significant", "2" = "Somewhat", "3" = "Slight", "4" = "None", "-1" = "No Response")
+
+vote$Q4_5 <- factor(vote$Q4_5)
+vote$Q4_5 <- recode_factor(vote$Q4_5, "1" = "Significant", "2" = "Somewhat", "3" = "Slight", "4" = "None", "-1" = "No Response")
+
+vote$Q4_6 <- factor(vote$Q4_6)
+vote$Q4_6 <- recode_factor(vote$Q4_6, "1" = "Significant", "2" = "Somewhat", "3" = "Slight", "4" = "None", "-1" = "No Response")
+
+vote$Q5 <- factor(vote$Q5)
+vote$Q5 <- recode_factor(vote$Q5, "1" = "2020 Matters", "2" = "2020 Doesn't Matter", "-1" = "No Response")
+
+vote$Q6 <- factor(vote$Q6)
+vote$Q6 <- recode_factor(vote$Q6, "1" = "A lot", "2" = "Some", "3" = "A few", "4" = "None", "-1" = "No Response")
+
+vote$Q7 <- factor(vote$Q7)
+vote$Q7 <- recode_factor(vote$Q7, "1" = "Changes Needed", "2" = "Changes Not Needed", "-1" = "No Response")
+
+vote$Q8_1 <- factor(vote$Q8_1)
+vote$Q8_1 <- recode_factor(vote$Q8_1, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_2 <- factor(vote$Q8_2)
+vote$Q8_2 <- recode_factor(vote$Q8_2, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_3 <- factor(vote$Q8_3)
+vote$Q8_3 <- recode_factor(vote$Q8_3, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_4 <- factor(vote$Q8_4)
+vote$Q8_4 <- recode_factor(vote$Q8_4, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_5 <- factor(vote$Q8_5)
+vote$Q8_5 <- recode_factor(vote$Q8_5, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_6 <- factor(vote$Q8_6)
+vote$Q8_6 <- recode_factor(vote$Q8_6, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_7 <- factor(vote$Q8_7)
+vote$Q8_7 <- recode_factor(vote$Q8_7, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_8 <- factor(vote$Q8_8)
+vote$Q8_8 <- recode_factor(vote$Q8_8, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q8_9 <- factor(vote$Q8_9)
+vote$Q8_9 <- recode_factor(vote$Q8_9, "1" = "A lot", "2" = "Some", "3" = "Not much", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q9_1 <- factor(vote$Q9_1)
+vote$Q9_1 <- recode_factor(vote$Q9_1, "1" = "Very Good", "2" = "Fairly Good", "3" = "Fairly Bad", "4" = "Very Bad", "-1" = "No Response")
+
+vote$Q9_2 <- factor(vote$Q9_2)
+vote$Q9_2 <- recode_factor(vote$Q9_2, "1" = "Very Good", "2" = "Fairly Good", "3" = "Fairly Bad", "4" = "Very Bad", "-1" = "No Response")
+
+vote$Q9_3 <- factor(vote$Q9_3)
+vote$Q9_3 <- recode_factor(vote$Q9_3, "1" = "Very Good", "2" = "Fairly Good", "3" = "Fairly Bad", "4" = "Very Bad", "-1" = "No Response")
+
+vote$Q9_4 <- factor(vote$Q9_4)
+vote$Q9_4 <- recode_factor(vote$Q9_4, "1" = "Very Good", "2" = "Fairly Good", "3" = "Fairly Bad", "4" = "Very Bad", "-1" = "No Response")
+
+vote$Q10_1 <- factor(vote$Q10_1)
+vote$Q10_1 <- recode_factor(vote$Q10_1, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q10_2 <- factor(vote$Q10_2)
+vote$Q10_2 <- recode_factor(vote$Q10_2, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q10_3 <- factor(vote$Q10_3)
+vote$Q10_3 <- recode_factor(vote$Q10_3, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q10_4 <- factor(vote$Q10_4)
+vote$Q10_4 <- recode_factor(vote$Q10_4, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_1 <- factor(vote$Q11_1)
+vote$Q11_1 <- recode_factor(vote$Q11_1, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_2 <- factor(vote$Q11_2)
+vote$Q11_2 <- recode_factor(vote$Q11_2, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_3 <- factor(vote$Q11_3)
+vote$Q11_3 <- recode_factor(vote$Q11_3, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_4 <- factor(vote$Q11_4)
+vote$Q11_4 <- recode_factor(vote$Q11_4, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_5 <- factor(vote$Q11_5)
+vote$Q11_5 <- recode_factor(vote$Q11_5, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q11_6 <- factor(vote$Q11_6)
+vote$Q11_6 <- recode_factor(vote$Q11_6, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q14 <- factor(vote$Q14)
+
+vote$Q15 <- factor(vote$Q15)
+
+vote$Q16 <- factor(vote$Q16)
+vote$Q16 <- recode_factor(vote$Q16, "1" = "Very Easy", "2" = "Somewhat Easy", "3" = "Somewhat Difficult", "4" = "Very Difficult", "-1" = "No Response")
+
+vote$Q17_1 <- factor(vote$Q17_1)
+vote$Q17_1 <- recode_factor(vote$Q17_1, "1" = "Very Confident", "2" = "Somewhat Confident", "3" = "Not Very Confident", "4" = "Not at all Confident", "-1" = "No Response")
+
+vote$Q17_2 <- factor(vote$Q17_2)
+vote$Q17_2 <- recode_factor(vote$Q17_2, "1" = "Very Confident", "2" = "Somewhat Confident", "3" = "Not Very Confident", "4" = "Not at all Confident", "-1" = "No Response")
+
+vote$Q17_3 <- factor(vote$Q17_3)
+vote$Q17_3 <- recode_factor(vote$Q17_3, "1" = "Very Confident", "2" = "Somewhat Confident", "3" = "Not Very Confident", "4" = "Not at all Confident", "-1" = "No Response")
+
+vote$Q17_4 <- factor(vote$Q17_4)
+vote$Q17_4 <- recode_factor(vote$Q17_4, "1" = "Very Confident", "2" = "Somewhat Confident", "3" = "Not Very Confident", "4" = "Not at all Confident", "-1" = "No Response")
+
+vote$Q18_1 <- factor(vote$Q18_1)
+vote$Q18_1 <- recode_factor(vote$Q18_1, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_2 <- factor(vote$Q18_2)
+vote$Q18_2 <- recode_factor(vote$Q18_2, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_3 <- factor(vote$Q18_3)
+vote$Q18_3 <- recode_factor(vote$Q18_3, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_4 <- factor(vote$Q18_4)
+vote$Q18_4 <- recode_factor(vote$Q18_4, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_5 <- factor(vote$Q18_5)
+vote$Q18_5 <- recode_factor(vote$Q18_5, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_6 <- factor(vote$Q18_6)
+vote$Q18_6 <- recode_factor(vote$Q18_6, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_7 <- factor(vote$Q18_7)
+vote$Q18_7 <- recode_factor(vote$Q18_7, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_8 <- factor(vote$Q18_8)
+vote$Q18_8 <- recode_factor(vote$Q18_8, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_9 <- factor(vote$Q18_9)
+vote$Q18_9 <- recode_factor(vote$Q18_9, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q18_10 <- factor(vote$Q18_10)
+vote$Q18_10 <- recode_factor(vote$Q18_10, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q20 <- factor(vote$Q20)
+vote$Q20 <- recode_factor(vote$Q20, "1" = "Yes", "2" = "No", "-1" = "No Response")
+
+vote$Q21 <- factor(vote$Q21)
+vote$Q21 <- recode_factor(vote$Q21, "1" = "Yes", "2" = "No", "3" = "Undecided", "-1" = "No Response")
+
+vote$Q23 <- factor(vote$Q23)
+vote$Q23 <- recode_factor(vote$Q23, "1" = "Donald Trump", "2" = "Joe Biden", "3" = "Unsure", "-1" = "No Response")
+
+vote$Q24 <- factor(vote$Q24)
+vote$Q24 <- recode_factor(vote$Q24, "1" = "Mail in", "2" = "In person before elec. day", "3" = "In person on elec. day", "4" = "other", "-1" = "No Response")
+
+vote$Q25 <- factor(vote$Q25)
+vote$Q25 <- recode_factor(vote$Q25, "1" = "Very Closely", "2" = "Somewhat Closely", "3" = "Not Very Closely", "4" = "Not at all", "-1" = "No Response")
+
+vote$Q26 <- factor(vote$Q26)
+vote$Q26 <- recode_factor(vote$Q26, "1" = "Always", "2" = "Sometimes", "3" = "Rarely", "4" = "Never", "-1" = "No Response")
+
+vote$Q30 <- factor(vote$Q30)
+vote$Q30 <- recode_factor(vote$Q30, "1" = "Republican", "2" = "Democrat", "3" = "Independent", "4" = "Other", "5" = "No Preference", "-1" = "No Response")
+
+head(vote)
+```
+
+```{r}
+# Generate a random vector to label which rows will be split
+set.seed(123456)
+split <- sample.split(vote$RespId, SplitRatio = 0.8)
+
+#Split basic set 
+voteBasic <- vote %>% dplyr::select(educ, race, gender, income_cat, ppage, voter_category, weight, voteChance)
+basicTraining <- subset(voteBasic, split == TRUE)
+basicTesting  <- subset(voteBasic, split == FALSE)
+
+#Split full set
+voteTraining <- subset(vote, split == TRUE)
+voteTesting  <- subset(vote, split == FALSE)
+```
+
+## Part 1: Basic Variables
+
+The basic variables to be explored are income category, education level, gender, sex, age, and weight. Voter category is the main response variable.
+
+### 1a: Basic Analysis
+
+#### Visualizations of Voter Category Distributions
+
+```{r}
+ggplot(vote, aes(x = factor(voter_category, levels = c("rarely/never", "sporadic", "always")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + geom_bar() + xlab("Voter Category") + guides(fill = guide_legend(title = "Voter Category")) + ylab("# of Respondents")
+```
+
+The chart above shows the distribution of the voter categories across the surveyed population. The sporadic category contained the most respondents, with the other two categories demonstrating a fairly normal distribution. The data does appear to be a bit skewed towards the right, through it is hard to tell as there are only 3 categories. 
+
+```{r fig1, fig.height=10, fig.width=20}
+
+# Remove just the basic variables
+voteBasic <- vote %>% dplyr::select(educ, race, gender, income_cat, ppage, voter_category, weight, voteChance)
+
+#Education
+basicBar1 <- ggplot(voteBasic, aes(x = factor(educ, levels = c("High school or less", "Some college", "College")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Education") + ylab("% of Respondents") + ggtitle("Education") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none") # Rotate category labels 
+
+#Income
+basicBar2 <- ggplot(voteBasic, aes(x = factor(income_cat, levels = c("Less than $40k", "$40-75k", "$75-125k", "$125k or more")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Income") + ylab("% of Respondents") + ggtitle("Income") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none") # Rotate category labels
+
+#Age
+#Note: Age is continuous, use histogram rather than bar plot
+basicBar3 <- ggplot(voteBasic, aes(x = ppage, fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_histogram(breaks = c(20, 30, 40, 50, 60, 70, 80, 90), position = "fill") + 
+  xlab("Age") + ylab("% of Respondents") + ggtitle("Age") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 0, vjust = 0.5, hjust=1), legend.position="none") # Rotate category labels
+
+#Gender
+basicBar4 <- ggplot(voteBasic, aes(x = gender, fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Gender") + ylab("% of Respondents") + ggtitle("Gender") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none") # Rotate category labels
+
+#Race
+basicBar5 <- ggplot(voteBasic, aes(x = race, fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always"))), legend.position="none") + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Race") + ylab("% of Respondents") + ggtitle("Race") + # Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none") # Rotate category labels
+
+#Weight
+#Note: Continuous variable, use histogram rather than bar plot
+basicBar6 <- ggplot(voteBasic, aes(x = weight, fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_histogram(position = "fill") + 
+  xlab("Weight") + ylab("% of Respondents") + ggtitle("Weight") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) + theme(legend.position="none")
+
+plot_grid(basicBar1, basicBar2, basicBar3, basicBar4, basicBar5, basicBar6)
+
+```
+
+These plots show the distribution of these voter categories across the different basic variables. Education, income, age and weight clearly show a difference in distribution across the different levels. It appears that as education, income, and age increase, the nonvoter category shrinks. Weight shows a reversal of this response, while gender and race do not appear to have much of an affect. 
+
+The results of these plots can be quantified with an analysis of variance test (AOV) to determine if there is a statistically significant difference in voter category as the value of the independent variable changes. 
+
+```{r}
+educResult <- aov(voteChance ~ educ, data = voteBasic)
+summary(educResult)
+```
+With a P-value less than 0.05, it can be concluded there is some meaningful difference in mean of voter category by different levels of education. This test does not give results of each group however, only that a significant difference does exist across any two groups. The significance of different levels can be examined with the TukeyHSD function. 
+
+```{r}
+TukeyHSD(educResult)
+```
+
+As all P-values are below 0.05, every level is associated with a difference in mean voter income. This methods can also be used to examine the rest of the basic prediction variables:
+
+```{r}
+incomeResult <- aov(voteChance ~ income_cat, data = voteBasic)
+summary(incomeResult)
+TukeyHSD(incomeResult)
+```
+
+Similarly to education, almost every comparison of income was significant, except for one. There was no significant difference in mean voter category between the levels of "75K-125K" and "125K or more", which is also seen in the graph. The largest difference occurs in any comparison including the "Less than $40K" level. 
+
+```{r}
+genderResult <- aov(voteChance ~ gender, data = voteBasic)
+summary(genderResult)
+TukeyHSD(genderResult)
+```
+
+While statistically significant at the 95% level, gender is not associated in a particularly large change in mean voter category. The difference is -0.04, which on a scale of one to three is almost insignificant, as shown in the plot. 
+
+```{r}
+raceResult <- aov(voteChance ~ race, data = voteBasic)
+summary(raceResult)
+TukeyHSD(raceResult)
+```
+
+The comparison of mean voter category was not significant between the "Other/Mixed - Hispanic" categories, with a P-value that is almost exactly one. This confirms what was seen in the plot, as the voter category distribution appeared to be identical. The same is true between the "White - Black" categories, with a p value of ~0.43, and a difference of 0.04 which is extremely small. The rest of the categories were statistically significant
+
+As age and weight are continuous variables, AOV tests cannot be performed in the same way. However, they can be performed backwards using the categorical voter category. 
+```{r}
+ageResult <- aov(ppage ~ voter_category, data = voteBasic)
+summary(ageResult)
+TukeyHSD(ageResult)
+
+weightResult <- aov(weight ~ voter_category, data = voteBasic)
+summary(weightResult)
+TukeyHSD(weightResult)
+```
+
+As expected based on the plots, both age and weight were statistically significant to differences in voter category. 
+
+### 1b: Basic Prediction Model
+
+
+#### The Full Model
+
+Now that the basic analysis has been completed, prediction models can be built. Linear regression is not the correct tool to do this, as the response variable is categorical rather than linear. Nevertheless as the response was already transformed to a numeric value, fitting a multiple linear regression (MLR) model was simple, and yields some rather interesting results. This MLR model was fitted with all of the basic variables as predictors. 
+
+```{r}
+#lmodb1 -> basic linear model #1
+
+lmodb1 <- lm(voteChance ~ income_cat + ppage + weight + educ + gender + race, data = basicTraining)
+summary(lmodb1)
+```
+            
+As expected, this model is not a particularly good fit. The Adjusted R-squared and multiple R-squared are approximately 0.16, indicating a poor fit. The residual standard error does not appear to be too bad at ~0.68, however the response is on a very small scale causing this figure to appear better than it really is. As expected almost every predictor was significant, and even the differences across levels appear to match those of the ANOVA tests. 
+
+#### Diagnostics and Model Selection
+
+Diagnostic plots are rather helpful to show exactly why this model fits so poorly, in addition to having some fairly entertaining results. 
+
+```{r}
+plot(lmodb1, which = 1)
+```
+
+The residuals vs fitted plot shows three distinct lines (as voter category has only three possible values), though the trend line shows very little structure. 
+
+```{r}
+plot(lmodb1, which = 2)
+```
+
+The normal Q-Q plot shows that the data is fairly normal towards the center, but deviates at the edges. A transformation (such as a square root or logarithm) would help to correct this, but is not needed as the MLR model was fitted purely just to see what would happen. 
+
+```{r}
+plot(lmodb1, which = c(3, 5))
+```
+
+The scale-location and residuals vs leverage plots are also very funky.
+In short, and MLR model yields some entertaining results and plots, but is not particularly useful. It is tempting to transform the predicted values to each voter category (based on which is closest numerically) to see how accurate it would be. This would be rather time consuming, and be fairly useless. 
+
+Thankfully, there is a MUCH more effective and correct way to build a model on data like this. This method is known as Ordinal Logistic Regression (OLR), a type of logistic regression. Logistic regression is used for classification, when the response variable is categorical. Without going into too much detail, logistic regression models a likelihood function with coefficients for each predictor. For a given input probabilities are calculated for each response category, and the one with the highest likelihood is selected. There are many types of logistic regression to be used in many different scenarios, such as binary, multinomial, and ordinal. Ordinal logistic regression is used when there are more than two levels of the response variable, and a natural order exists between the levels. Examples of this include performance categories (Over performing, performing as expected, underperforming) and likelihood categories (Very likely, somewhat likely, not likely). OLR is perfect for this data set, as a natural order exists among the voter categories. 
+
+Similarly to the MLR model, all of the basic predictors will be used to predict the voter category. Here the training set will be used, whereas the MLR model used the full data set. 
+
+```{r}
+basicOLR <- polr(voter_category ~ income_cat + educ + gender + ppage + weight + race, data = basicTraining, Hess = TRUE)
+summary(basicOLR)
+```
+
+P-values are not natively included in this summary, and can be added in afterwards.
+
+```{r}
+coefs <- coef(summary(basicOLR))
+pval <- pnorm(abs(coefs[,"t value"]), lower.tail = FALSE) * 2
+coefs <- cbind(coefs, "p value" = pval)
+
+coefs
+```
+
+As can be seen, almost every predictor was significant, with highschool or less education, income of less than $40k, and age having significantly lower p values than the other variables, and having some of the largest influence on voter category. 
+
+#### Testing the Basic Model
+
+Now that a prediction model has been built, it can be tested on the testing data. The result of this is a matrix known as the confusion matrix. This matrix breaks down the predicted vs actual voter categories. Anything on the main diagonal was placed into the correct category. This provides valueable insight to not only the overall accuracy of the model, but which individual categories the model is having trouble predicting. 
+
+```{r}
+predictBasic = predict(basicOLR, basicTesting)
+
+predBasic_df <- tibble("target" = basicTesting$voter_category, "prediction" = predictBasic)
+
+basic_conf_mat <- confusion_matrix(targets = predBasic_df$target, predictions = predBasic_df$prediction)
+plot_confusion_matrix(basic_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predBasic_df$prediction, predBasic_df$target)
+```
+
+Overall, the model is 48.97% accurate, with a 95% confidence interval from 46.07% to 51.88%. This is better than a random choice, but could be quite a bit better. The "no information rate" statistic is the accuracy of the model should it select the largest response category (sporadic) every time. This value is not covered by the 95% confidence interval, and it can be concluded that the basic variables are significant in predicting voter category. As shown in the plot, it correctly the sporadic category with 68% accuracy, the always category with 33.5% accuracy, and the rarely/never category with 33.2% accuracy. The model is not any better at identifying the always or rarely/never participants with any more accuracy than selecting a category at random. However, it rarely places respondents into the opposite category, with only 6.2% of the respondents of the rarely category being placed into the always category, and 10.1% of the always category being placed into the never category. This demonstrates that the model is having a hard time differentiating between sporadic and the other two levels, while rarely confusing the rarely and always categories with each other. To try to improve the model, we can look for multicollinearity with variance inflation factors (VIF's) and a correlation plot. 
+
+```{r}
+vif(basicOLR)
+
+corrplot(cov2cor(vcov(basicOLR)), method = "color")
+```
+
+The VIFs look fairly good, though weight and education both have higher factors than the rest. The correlation plot also demonstrates this. We can remove weight from the model to correct this, and find out if it has any effect on the overall fit.
+
+```{r}
+basicOLR_r <- polr(voter_category ~ educ + income_cat + race + gender + ppage , data = basicTraining, Hess = TRUE)
+summary(basicOLR_r)
+predictBasic = predict(basicOLR, basicTesting)
+
+predBasic_df <- tibble("target" = basicTesting$voter_category, "prediction" = predictBasic)
+
+basic_conf_mat <- confusion_matrix(targets = predBasic_df$target, predictions = predBasic_df$prediction)
+plot_confusion_matrix(basic_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predBasic_df$prediction, predBasic_df$target)
+```
+
+By removing the weight variable, the model does fit ever so slightly better by total accuracy, though the accuracy of the rarely/never category slightly drops. The AIC also increases by a small amount. 
+
+```{r}
+anova(basicOLR, basicOLR_r)
+```
+
+While the reduced model is slightly more simple, the full model is still better. The P-value is extremely low, though the likelihood radio statistic is fairly small, indicating that the difference isn't very large even if it is statistically significant. 
+
+### 1c: Initial Conclusions
+
+In conclusion, every prediction variable in the basic set was correlated with a difference in voter category. The most significant of these were an education of high school or less, income of less than $40k per year and age. As demonstrated, linear regression is the completely wrong tool to use for categorical response variables, though the results are rather interesting to look at. The ordinal logistic model of all the basic predictors was fairly accurate at ~49% overall accuracy, though still it still struggles to differentiate the middle category from the two outer ones. Removing weight to eliminate a slight collinearity "issue" slightly improved the overall accuracy, but did not improve the model.
+
+## Part 2: The Full Dataset
+
+Part 2 of this analysis will use the methods of part 1, but applied to a larger set of variables. Hopefully this will lead to insight as to a voter's attitude towards the election and/or government, experiencing barriers to voting, party affiliation, and how this influences their likelihood to vote. Many of the variables in the full set include several parts, such as trust in the many parts of government, or experiencing barriers of entry to voting. There are 79 total independent variables, in contrast to part 1's 6. For sake of simplicity only a few variables have been plotted and have ANOVA results. 
+
+### 2a: Analysis
+
+```{r fig2, fig.height=10, fig.width=20}
+trust1 <- ggplot(vote, aes(x = factor(Q8_1, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Presidency") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust2 <- ggplot(vote, aes(x = factor(Q8_2, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in Congress") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust3 <- ggplot(vote, aes(x = factor(Q8_1, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Supreme Court") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust4 <- ggplot(vote, aes(x = factor(Q8_4, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The CDC") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust5 <- ggplot(vote, aes(x = factor(Q8_5, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in Election Officials") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust6 <- ggplot(vote, aes(x = factor(Q8_6, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Intelligence Community") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust7 <- ggplot(vote, aes(x = factor(Q8_7, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in News Media") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust8 <- ggplot(vote, aes(x = factor(Q8_8, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Police") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+trust9 <- ggplot(vote, aes(x = factor(Q8_9, levels = c("A lot", "Some", "Not much", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Trust Level") + ylab("% of Respondents") + ggtitle("Trust in The Post Office") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+plot_grid(trust1, trust2, trust3, trust4, trust5, trust6, trust7, trust8, trust9)
+```
+
+The plots above show each variable that asked respondents about their trust in government. As expected, generally the less someone trusts the government, the more likely they are to be part of the rarely/never voting category. Interestingly those who refused to answer the question were much more likely to be part of that category. 
+
+Next, AOV tests can be conducted to determine which variables are significant in a difference of mean voter category. For simplicity and time constraints, the difference between specific levels will not be examined at this time.
+```{r}
+summary(aov(voteChance ~ Q8_1, data = vote))
+summary(aov(vote$voteChance ~ vote$Q8_2))
+summary(aov(vote$voteChance ~ vote$Q8_3))
+summary(aov(vote$voteChance ~ vote$Q8_4))
+summary(aov(vote$voteChance ~ vote$Q8_5))
+summary(aov(vote$voteChance ~ vote$Q8_6))
+summary(aov(vote$voteChance ~ vote$Q8_7))
+summary(aov(vote$voteChance ~ vote$Q8_8))
+summary(aov(vote$voteChance ~ vote$Q8_9))
+```
+
+Every variable involving trust in various parts of the government was significant at the 95% confidence level, confirming what was observed in the plots. Only one variable was not significant at the 99% level, Q8_2 which corresponds to trust in Congress. 
+
+These same steps will be repeated for barriers of entry to voting.
+```{r fig3, fig.height=10, fig.width=20}
+barrier1 <- ggplot(vote, aes(x = factor(Q18_1, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Didn't Have Correct Id") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels 
+
+barrier2 <- ggplot(vote, aes(x = factor(Q18_2, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Couldn't Find Polling Place") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier3 <- ggplot(vote, aes(x = factor(Q18_3, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Missed Registration Deadline") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier4 <- ggplot(vote, aes(x = factor(Q18_4, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Unable to Acess Polling Place") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier5 <- ggplot(vote, aes(x = factor(Q18_5, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Couldn't Get Assistance Filling Out Ballot") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier6 <- ggplot(vote, aes(x = factor(Q18_6, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Had to Cast Provisional Ballot") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier7 <- ggplot(vote, aes(x = factor(Q18_7, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Couldn't Get Off Work to Vote") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier8 <- ggplot(vote, aes(x = factor(Q18_8, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Waited More Than an Hour") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier9 <- ggplot(vote, aes(x = factor(Q18_9, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Told Name Wasn't on List After Registration") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+
+barrier10 <- ggplot(vote, aes(x = factor(Q18_10, levels = c("Yes", "No", "Not at all", "No Response")), fill = factor(voter_category, levels = c("rarely/never", "sporadic", "always")))) + # Create basic Plot
+  geom_bar(position = "fill") + 
+  xlab("Personal Experience") + ylab("% of Respondents") + ggtitle("Didn't get Ballot in Time") +# Add axis labels
+  guides(fill = guide_legend(title = "Voter Category")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) # Rotate category labels
+plot_grid(barrier1, barrier2, barrier3, barrier4, barrier5, barrier6, barrier7, barrier8, barrier9, barrier10)
+
+```
+
+The barriers of entry experienced include waiting more than an hour, being unable to find a polling place, and not receiving a ballot in time. Again, as expected if a respondent experienced a barrier of entry, they appear to be less likely to vote. Similarly to the trust in government plots, participants who refused to answer the question were much more likely to be a non-voter. This group for any of these given variables consists of ~50 or so total responses. While making up only ~1% of the survey responses, it is still a strong indicator that someone would be part of the nonvoter category. This will be quantified with AOV tests, in addition to a TukeyHSD test to examine the significance of the "No Response" category. 
+
+```{r}
+TukeyHSD(aov(vote$voteChance ~ vote$Q18_1))
+summary(aov(vote$voteChance ~ vote$Q18_2))
+summary(aov(vote$voteChance ~ vote$Q18_3))
+summary(aov(vote$voteChance ~ vote$Q18_4))
+summary(aov(vote$voteChance ~ vote$Q18_5))
+summary(aov(vote$voteChance ~ vote$Q18_6))
+summary(aov(vote$voteChance ~ vote$Q18_7))
+summary(aov(vote$voteChance ~ vote$Q18_8))
+summary(aov(vote$voteChance ~ vote$Q18_9))
+summary(aov(vote$voteChance ~ vote$Q18_10))
+```
+
+Every single barrier of entry variable was associated with a difference in mean voter category. The tukeyHSD test also demonstrates that the "no response" category is statistically significant in this context, and is associated with a much larger difference than the other two levels. 
+
+So far this has only examined 25 out of the total of 79 variables. For sake of time visualizations and AOV tests will not be shown for the remainder of the prediction variables. It can be concluded that lack of trust in the various aspects of government and experiencing barriers of entry to voting do have a significant impact on a participants likelihood to vote. In addition, a lack of cooperation in the survey is also associated with this, with a much larger effect. 
+
+### 2b: Prediction Model
+
+#### The Full Model
+A prediction model based off of the entire set of predictors (aside from those left out in the initial setup) can now be fitted. As it has already been demonstrated in this project, and MLR model is not particularly useful. As such an ordinal logistic regression model will be fitted, and compared to the initial basic model. As there are literally hundreds of coefficients, the summary of the model has been left out in favor of the prediction results. To examine the meaning of each variable, the code book is linked here: https://github.com/fivethirtyeight/data/blob/master/non-voters/nonvoters_codebook.pdf
+
+```{r}
+# Full OLR Model
+
+fullOLR <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q2_1 + Q2_2 + Q2_3 + Q2_3 + Q2_4 + Q2_5 + Q2_6 + Q2_7 + Q2_8 + Q2_9 + Q2_10 + Q3_1 + Q3_2 + Q3_3 + Q3_4 + Q3_5 + Q3_6 + Q4_1 + Q4_2 + Q4_3 + Q4_4 + Q4_5 + Q4_6 + Q5 + Q6 + Q7 + Q8_1 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_6 + Q8_7 + Q8_8 + Q8_9 + Q9_1 + Q9_2 + Q9_3 + Q9_4 + Q10_1 + Q10_2 + Q10_3 + Q10_4 + Q11_1 + Q11_2 + Q11_3 + Q11_4 + Q11_5 + Q11_6 + Q14 + Q15 + Q16 + Q17_1 + Q17_2 + Q17_3 + Q17_4 + Q18_1 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_9 + Q18_10 + Q20 + Q21 + Q23 + Q24 + Q25 + Q26 + Q30, data = voteTraining, Hess = TRUE)
+
+predictVote = predict(fullOLR, voteTesting)
+
+predFull_df <- tibble("target" = voteTesting$voter_category, "prediction" = predictVote)
+
+full_conf_mat <- confusion_matrix(targets = predFull_df$target, predictions = predFull_df$prediction)
+plot_confusion_matrix(full_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predFull_df$prediction, predFull_df$target)
+```
+
+The full model was significantly more accurate than the basic one, placing the responses in the testing subset into the correct category 58.9% of the time. More importantly, the model much better at identifying nonvoters, with an accuracy rate of 64%, in contrast to the basic model's 32.2%. The always category also shows a slight increase with 37.9% accuracy as opposed to the basic model's 33.5%. In addition, nonvoters are mistaken for voters in the always category a mere 4.3% of the time, and vice verse at a rate of 1.4%. The sporadic category is also identified a slightly higher percentage of the time. Overall, the model has become significantly more effective at differentiating between the nonvoters and sporadic voters, but still struggles to discern between the sporadic and always vote categories. 
+
+Multicollinearity is likely a problem in this model, partially due to the nature of the questions. For some variables, respondents were given the same question repeatedly for different things, particularly shown in the trust in government plots. For example, if an individual does not have any trust in the presidency, it is not likely that they would have complete trust in congress or the supreme court. VIF's can be used to confirm this 
+
+```{r}
+vif(fullOLR)
+```
+
+Many of these variables have high VIF's with coefficients of many variables exceeding 5, several exceeding 10, and a few even exceeding 15. This is strong evidence that multicollinearity exists within the full model.
+
+#### The Reduced Model
+A reduced model will be constructed by removing the variable with the highest VIF until all are less than 10, using a backwards elimination method.
+```{r}
+reducedOLR <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q2_1 + Q2_2 + Q2_3 + Q2_3 + Q2_4 + Q2_5 + Q2_6 + Q2_7 + Q2_8 + Q2_9 + Q2_10 + Q3_2 + Q3_3 + Q3_4 + Q3_5 + Q3_6 + Q4_1 + Q4_3 + Q4_4 + Q4_5 + Q4_6 + Q5 + Q6 + Q7 + Q8_1 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_7 + Q8_8 + Q8_9 + Q9_1 + Q9_2 + Q9_3 + Q9_4 + Q10_1 + Q10_2 + Q10_3 + Q10_4 + Q11_1 + Q11_2 + Q11_3 + Q11_4 + Q11_5 + Q11_6 + Q14 + Q15 + Q16 + Q17_1 + Q17_2 + Q17_4 + Q18_1 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_10 + Q20 + Q21 + Q24 + Q25 + Q26 + Q30, data = voteTraining, Hess = TRUE)
+
+#Removed: Q4_2, Q17_3, Q23, Q8_6, Q3_1, Q18_9
+
+predictVoteReduced = predict(reducedOLR, voteTesting)
+
+predReduced_df <- tibble("target" = voteTesting$voter_category, "prediction" = predictVoteReduced)
+
+reduced_conf_mat <- confusion_matrix(targets = predReduced_df$target, predictions = predReduced_df$prediction)
+plot_confusion_matrix(reduced_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predReduced_df$prediction, predReduced_df$target)
+
+vif(reducedOLR)
+```
+The variables Q4_2, Q17_3, Q23, Q8_6, Q3_1, and Q18_9 were removed, as all had a VIF of greater than 10. The reduced model was slightly more accurate, with an overall accuracy rate of 59.2%. Every category experienced a slight increase in accuracy though the difference was rather small. 
+
+```{r}
+anova(fullOLR, reducedOLR)
+```
+
+As shown in the ANOVA results, the full model was not statistically better with a p-value of 0.22. Another model will be created based off of the same method, with a VIF cutoff of 5 instead. 
+
+```{r}
+reducedOLR2 <- polr(voter_category ~ educ + income_cat + race + gender + ppage + weight + Q2_1 + Q2_2 + Q2_3 + Q2_3 + Q2_5 + Q2_6 + Q2_7 + Q2_8 + Q2_9 + Q2_10 + Q3_3 + Q3_4 + Q3_5 + Q3_6 + Q4_4 + Q4_5 + Q4_6 + Q5 + Q6 + Q7 + Q8_2 + Q8_3 + Q8_4 + Q8_5 + Q8_9 + Q9_1 + Q9_2 + Q9_4 + Q10_1 + Q10_2 + Q10_3 + Q10_4 + Q11_1 + Q11_2 + Q11_3 + Q11_4 + Q11_5 + Q11_6 + Q15 + Q16 + Q17_2 + Q17_4 + Q18_1 + Q18_2 + Q18_3 + Q18_4 + Q18_5 + Q18_6 + Q18_7 + Q18_8 + Q18_10 + Q20 + Q21 + Q24 + Q25 + Q26 , data = voteTraining, Hess = TRUE)
+
+#Removed: Q17_1, Q9_3, Q8_1, Q4_1, Q30, Q8_8, Q8_7, Q3_2, Q4_3, Q14, Q2_4
+
+predictVoteReduced2 = predict(reducedOLR2, voteTesting)
+
+predReduced2_df <- tibble("target" = voteTesting$voter_category, "prediction" = predictVoteReduced2)
+
+reduced2_conf_mat <- confusion_matrix(targets = predReduced2_df$target, predictions = predReduced2_df$prediction)
+plot_confusion_matrix(reduced2_conf_mat$'Confusion Matrix'[[1]], add_sums = TRUE)
+
+confusionMatrix(predReduced2_df$prediction, predReduced2_df$target)
+
+vif(reducedOLR2)
+```
+
+```{r}
+anova(reducedOLR2, reducedOLR)
+```
+To obtain all VIFs below 5, variables Q17_1, Q9_3, Q8_1, Q4_1, Q30, Q8_8, Q8_7, Q3_2, Q4_3, Q14, and Q2_4 were removed. The second reduced model saw a decrease in accuracy among the always and never/rarely categories, and a slight increase of accuracy among the sporadic category. Though overall accuracy rate also did not change much. The ANOVA test confirms this, showing that the removed variables are statistically significant with a p value of 0.002. 
+
+### 2c: Conclusions
+
+The first reduced model was the best, as by the methods used was the most accurate without eliminating variables that were considered significant by the ANOVA tests. This model correctly prediced sporadic voters 71.6% of the time, nonvoters 64.1 % of the time, and participant that always vote 37.9% of the time. Collectively, the overall accuracy rate was 59.25%, which was much better than the basic model. 
+
+## Final conclusion
+
+In the basic set of predictors, every single one was somewhat significant in predicting a participants voter category. In particular, having an income of $40k or less and a high school education or less was the strongest indicator of voter category. The graphical observations were also confirmed by ANOVA tests. The basic model was 48.97% accurate, which while being better than picking categories at random or picking the sporadic category every time left a lot to be desired. In particular, the model was no better at predicting the never/rarely or always category than selecting one at random. The worst case scenario rate wasn't terrible, which demonstrated that the model had issues differentiating between sporadic and the other two categories individually. 
+
+In the full data set, having little trust in government was generally associated with non-voters, though the "No Response" level was a much stronger indicator. These results were also observed among experiencing barriers of entry to voting with every variable in this category having some sort of statistical significance. For sake of time and simplicity, creating graphics and their associated ANOVA tests were left out for the rest of the full set. The full set included 79 predictor variables. An ordinal logistic model was fitted on the full set of predictors, greatly improving on the basic model's results. As collinearity was indicated by variance inflation factors, a two reduced models were created using a backwards elimination technique with cutoffs at VIF values of 5 and 10. The model wit a cutoff of 10 had the best results, as it was the simplest of the three full set models that did not loose any significant variables. The final overall accuracy rate was 59.25%. 
+
+This project has shown that their are an absolutely massive number of factors that are associated with an individuals voting preferences. Age, education level, income, party affiliation, trust in government, and recent life events (such as losing a job or being diagnosed with COVID19) were all associated with a change in the distribution of voter category. 
+
+In the future, I would like to perform examinations and create graphics for all of the predictors, in addition to performing ANOVA and pair-wise comparisons to determine which are significant and the most influential. These results would be used to eliminate any non-significant predictors, and gain more insight to the psychology of voters. I would also like to learn and apply a few different model selection methods such as LASSO, AIC, or some sort of factor analysis to narrow down which variables are the most important, and build a more accurate model. 
